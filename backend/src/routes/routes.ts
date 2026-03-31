@@ -6,10 +6,11 @@ import { Storage } from './storage';
 
 const router = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || '';
 
-
-
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is not defined');
+}
 
 // ==========================================
 // 1. CUSTOM JWT MIDDLEWARE
@@ -24,7 +25,7 @@ export const requireAuth = (req: express.Request, res: express.Response, next: e
   const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+    const decoded = jwt.verify(token, JWT_SECRET) as unknown as { userId: string };
     (req as any).userId = decoded.userId; 
     next();
   } catch (error) {
