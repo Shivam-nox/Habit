@@ -12,6 +12,7 @@ import {
   habitMetrics, 
   recurringConfigs, 
   financialProfiles,
+  appNotifications,
 } from "../db/schema";
 
 
@@ -47,6 +48,19 @@ export const Storage = {
 
   getUserByEmail: async (email: string) => {
     const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  },
+
+  getUserById: async (id: string) => {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  },
+
+  savePushToken: async (userId: string, expoPushToken: string) => {
+    const [user] = await db.update(users)
+      .set({ expoPushToken })
+      .where(eq(users.id, userId))
+      .returning();
     return user;
   },
 
@@ -460,6 +474,25 @@ export const Storage = {
     };
   },
 
-// ... end of export const Storage
+createNotification: async (data: { userId: string; title: string; message: string }) => {
+    const [notification] = await db.insert(appNotifications)
+      .values({
+        userId: data.userId,
+        title: data.title,
+        message: data.message,
+        isRead: false,
+        // createdAt should be handled automatically by your schema, 
+        // but you can add it here if needed: date: new Date().toISOString()
+      })
+      .returning();
+    return notification;
+  },
   
+
+ getNotifications: async (userId: string) => {
+    return await db.select()
+      .from(appNotifications)
+      .where(eq(appNotifications.userId, userId))
+      .orderBy(desc(appNotifications.createdAt));
+  }
 };
