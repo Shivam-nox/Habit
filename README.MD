@@ -46,6 +46,7 @@ Built with performance and design in mind, Spendly delivers a **smooth, modern U
 
 ## 🧠 Core Backend Modules
 
+<<<<<<< HEAD
 ### 📡 Routes (`/src/routes/chat.ts`)
 - Handles AI coach interactions
 - Processes user prompts
@@ -68,6 +69,14 @@ Built with performance and design in mind, Spendly delivers a **smooth, modern U
 - Neon PostgreSQL database
 - Groq API key
 
+=======
+- Node.js (v16+)
+- npm or yarn
+- Expo Go / Emulator
+- Neon PostgreSQL database
+- Groq API key
+
+>>>>>>> temp-fix
 ### 🖥️ Backend Setup
 
 ```bash

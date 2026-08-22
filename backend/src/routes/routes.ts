@@ -3,6 +3,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { Storage } from './storage';
+import { sendPushNotification } from '../utils/push';
 
 const router = express.Router();
 
@@ -100,6 +101,22 @@ router.post('/auth/login', async (req, res) => {
   }
 });
 
+// --- PUSH TOKEN ---
+router.post('/auth/push-token', requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  const { token } = req.body;
+  if (!token) {
+    return res.status(400).json({ error: 'Push token is required' });
+  }
+  try {
+    await Storage.savePushToken(userId, token);
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error("Save Push Token Error:", error);
+    res.status(500).json({ error: 'Failed to save push token' });
+  }
+});
+
 // ==========================================
 // 3. APPLICATION ROUTES
 // ==========================================
@@ -133,13 +150,19 @@ router.get('/transactions', requireAuth, async (req: express.Request, res: expre
 });
 
 router.post('/transactions', requireAuth, async (req: express.Request, res: express.Response) => {
+  console.log("🚀 [DEBUG] /transactions route hit!");
+  console.log("📦 [DEBUG] Request Body:", req.body);
+  
   const userId = (req as any).userId;
+  console.log("👤 [DEBUG] User ID:", userId);
+
   const { 
     amount, type, categoryName, note, date, 
     intent, paymentMode, debtType, debtContact 
   } = req.body;
 
   if (!amount || !type) {
+    console.log("❌ [DEBUG] Validation Failed: Missing amount or type");
     res.status(400).json({ error: 'Missing required fields (amount, type)' });
     return;
   }
@@ -147,17 +170,21 @@ router.post('/transactions', requireAuth, async (req: express.Request, res: expr
   try {
     let realCategoryId = null;
     if (categoryName) {
+      console.log(`🔍 [DEBUG] Looking up category: ${categoryName}`);
       const categoriesList = await Storage.getCategories(userId, type);
       const matchedCategory = categoriesList.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
-      
+
       if (matchedCategory) {
         realCategoryId = matchedCategory.id;
+        console.log(`✅ [DEBUG] Found Category ID: ${realCategoryId}`);
       } else {
+        console.log(`❌ [DEBUG] Category '${categoryName}' not found in database.`);
         res.status(400).json({ error: `Category '${categoryName}' not found.` });
         return;
       }
     }
 
+    console.log("💾 [DEBUG] Attempting to save transaction...");
     const tx = await Storage.addTransaction({
       userId,
       amount: String(amount), 
@@ -171,10 +198,44 @@ router.post('/transactions', requireAuth, async (req: express.Request, res: expr
       date: date || new Date().toISOString(),
       source: 'manual',
     });
+    console.log("✅ [DEBUG] Transaction saved successfully:", tx.id);
+
+    // --- NOTIFICATION LOGIC ---
+    const notifTitle = "Record Added 🚀";
+    const notifMessage = `Successfully added ${type} of ${amount}`;
+
+    console.log("🔔 [DEBUG] Fetching user for push token...");
+    const user = await Storage.getUserById(userId);
     
+    if (user?.expoPushToken) {
+      console.log("📱 [DEBUG] Sending Expo Push to:", user.expoPushToken);
+      sendPushNotification(
+        userId,
+        user.expoPushToken,
+        notifTitle,
+        notifMessage
+      ).catch(e => console.error("❌ [DEBUG] Push Notification Error:", e));
+    } else {
+      console.log("⚠️ [DEBUG] No expoPushToken found for user");
+    }
+
+    console.log("📥 [DEBUG] Saving to appNotifications table...");
+    try {
+      await Storage.createNotification({
+        userId,
+        title: notifTitle,
+        message: notifMessage
+      });
+      console.log("✅ [DEBUG] App Notification saved");
+    } catch (notifError) {
+      console.error("❌ [DEBUG] Failed to save app notification:", notifError);
+    }
+    // --------------------------
+
+    console.log("🏁 [DEBUG] Sending success response to frontend");
     res.status(201).json(tx);
   } catch (e) {
-    console.error("Transaction Route Error:", e);
+    console.error("❌ [DEBUG] FATAL Transaction Route Error:", e);
     res.status(500).json({ error: 'Transaction failed to save' });
   }
 });
@@ -223,6 +284,17 @@ router.post('/recurring', requireAuth, async (req: express.Request, res: express
       isActive: true,
     });
     
+    // Trigger push notification
+    const user = await Storage.getUserById(userId);
+    if (user?.expoPushToken) {
+      await sendPushNotification(
+        userId,
+        user.expoPushToken,
+        "Recurring Payment Set 📅",
+        `Successfully set up ${type} of ${amount} for ${actualFrequency}`
+      );
+    }
+    
     res.status(201).json(newRecurring);
   } catch (e) {
     console.error("Recurring Route Error:", e);
@@ -256,6 +328,18 @@ router.post('/goals', requireAuth, async (req: express.Request, res: express.Res
       targetAmount: String(targetAmount),
       desiredDate: desiredDate || null,
     });
+    
+    // Trigger push notification
+    const user = await Storage.getUserById(userId);
+    if (user?.expoPushToken) {
+      await sendPushNotification(
+        userId,
+        user.expoPushToken,
+        "Goal Created 🎯",
+        `Your goal "${name}" for ${targetAmount} has been created.`
+      );
+    }
+    
     res.status(201).json(newGoal);
   } catch (e) {
     res.status(500).json({ error: 'Failed to create goal' });
@@ -269,6 +353,18 @@ router.post('/goals/:id/allocate', requireAuth, async (req: express.Request, res
 
   try {
     const updatedGoal = await Storage.updateGoalProgress(id, userId, Number(amount));
+    
+    // Trigger push notification
+    const user = await Storage.getUserById(userId);
+    if (user?.expoPushToken) {
+      await sendPushNotification(
+        userId,
+        user.expoPushToken,
+        "Funds Allocated 💰",
+        `You've allocated ${amount} towards a goal.`
+      );
+    }
+    
     res.json(updatedGoal);
   } catch (e: any) {
     res.status(403).json({ error: e.message || 'Failed to update goal progress' });
@@ -337,6 +433,18 @@ router.get('/profile', requireAuth, async (req: express.Request, res: express.Re
     res.json(profile || null);
   } catch (e) {
     res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+});
+
+// Get Notifications
+router.get('/notifications', requireAuth, async (req: express.Request, res: express.Response) => {
+  try {
+    const userId = (req as any).userId;
+    const notifications = await Storage.getNotifications(userId);
+    res.json(notifications);
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

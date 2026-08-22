@@ -27,6 +27,7 @@ export const users = pgTable('users', {
   name: text('name').notNull(),
   email: text('email').unique().notNull(),
   password: text('password').notNull(), // This will store the bcrypt hash
+  expoPushToken: text('expo_push_token'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -122,6 +123,16 @@ export const aiChatHistory = pgTable("ai_chat_history", {
   timestamp: timestamp("timestamp").defaultNow(),
 });
 
+// 10. App Notifications
+export const appNotifications = pgTable("app_notifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // --- RELATIONS ---
 
 export const usersRelations = relations(users, ({ many, one }) => ({
@@ -129,6 +140,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   categories: many(categories),
   goals: many(goals),
   budgets: many(budgets),
+  appNotifications: many(appNotifications),
   habitMetrics: one(habitMetrics, {
     fields: [users.id],
     references: [habitMetrics.userId],
@@ -146,6 +158,10 @@ export const financialProfilesRelations = relations(financialProfiles, ({ one })
 export const transactionsRelations = relations(transactions, ({ one }) => ({
   user: one(users, { fields: [transactions.userId], references: [users.id] }),
   category: one(categories, { fields: [transactions.categoryId], references: [categories.id] }),
+}));
+
+export const appNotificationsRelations = relations(appNotifications, ({ one }) => ({
+  user: one(users, { fields: [appNotifications.userId], references: [users.id] }),
 }));
 
 export const budgetsRelations = relations(budgets, ({ one }) => ({
