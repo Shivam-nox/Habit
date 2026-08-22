@@ -2,63 +2,59 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  RefreshControl, ActivityIndicator
+  RefreshControl, ActivityIndicator, Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { MotiView, AnimatePresence } from 'moti';
+import { MotiView } from 'moti';
 import * as Haptics from 'expo-haptics';
 import { useApi } from '../../services/api';
 import { useRouter } from 'expo-router';
 
-// ─── PREMIUM MINIMAL PALETTE ─────────────────────────────────
+// ─── MINIMAL PALETTE ─────────────────────────────────
 const C = {
-  primary: '#2E7D6E',     // Deep Teal
-  primaryDark: '#1B4D44',
-  gold: '#F5A623',
-  red: '#E11D48',
-  success: '#059669',     // Emerald 600
-  bg: '#F8FAFA',          // Ultra-light cool gray
+  brand: '#2E7D6E',
+  red: '#DC2626',
+  success: '#16A34A',
+  bg: '#FAFAFA',
   surface: '#FFFFFF',
-  text: '#0F172A',        // Slate 900
-  subtext: '#64748B',     // Slate 500
-  border: '#E2E8F0',      // Slate 200
-  glass: '#F1F5F9',       // Slate 100 for tabs
+  text: '#111827',
+  subtext: '#9CA3AF',
+  border: '#EEEEEE',
+  fill: '#F5F5F5',
 };
 
 const fmt = (n: number) => `₹${(n || 0).toLocaleString('en-IN')}`;
 
-// ─── ANIMATED NUMBER COMPONENT ──────────────────────────────
+// ─── ANIMATED NUMBER ──────────────────────────────
 const AnimatedAmount = ({ value, style }: { value: number; style?: any }) => {
   const [displayed, setDisplayed] = useState(0);
   useEffect(() => {
     let start = 0;
-    const steps = 20;
+    const steps = 18;
     const inc = value / steps;
     const timer = setInterval(() => {
       start += inc;
       if (start >= value) { setDisplayed(value); clearInterval(timer); }
       else setDisplayed(start);
-    }, 20);
+    }, 18);
     return () => clearInterval(timer);
   }, [value]);
   return <Text style={style}>{fmt(displayed)}</Text>;
 };
 
-// ─── QUICK ACTION CHIP ──────────────────────────────────────
-const QuickChip = ({ icon, label, onPress, color = C.primary }: any) => (
-  <TouchableOpacity style={styles.chip} onPress={() => { Haptics.selectionAsync(); onPress(); }} activeOpacity={0.7}>
-    <View style={[styles.chipIconWrap, { backgroundColor: `${color}12` }]}>
-      <MaterialCommunityIcons name={icon} size={22} color={color} />
+// ─── QUICK ACTION ──────────────────────────────────
+const QuickChip = ({ icon, label, onPress }: any) => (
+  <TouchableOpacity style={styles.chip} onPress={() => { Haptics.selectionAsync(); onPress(); }} activeOpacity={0.6}>
+    <View style={styles.chipIconWrap}>
+      <MaterialCommunityIcons name={icon} size={20} color={C.brand} />
     </View>
     <Text style={styles.chipLabel}>{label}</Text>
   </TouchableOpacity>
 );
 
-type ListTab = 'History' | 'Recurring' | 'Goals';
+type ListTab = 'History' | 'Recurring' | 'Goals' | 'Alerts';
 
-// ─── MAIN SCREEN ─────────────────────────────────────────────
 export default function DashboardScreen() {
   const api = useApi();
   const router = useRouter();
@@ -66,33 +62,47 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<ListTab>('History');
-
-  // Data States
-  const [userName, setUserName] = useState('Shivam'); // Default fallback
+  const [userName, setUserName] = useState('');
   const [analytics, setAnalytics] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [recurring, setRecurring] = useState<any[]>([]);
   const [goals, setGoals] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+
+  const handleLogout = () => {
+    Haptics.selectionAsync();
+    Alert.alert('Log out', 'Are you sure you want to log out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Log out',
+        style: 'destructive',
+        onPress: async () => {
+          await api.logout();
+          router.replace('/sign-in');
+        }
+      }
+    ]);
+  };
 
   const load = useCallback(async (isRefresh = false) => {
     try {
-      // Fetch everything concurrently to make it super fast
-      const [profileRes, dashRes, txRes, recRes, goalRes] = await Promise.all([
+      const [profileRes, dashRes, txRes, recRes, goalRes, notifRes] = await Promise.all([
         api.getProfile().catch(() => null),
         api.getDashboard().catch(() => null),
         api.getTransactions().catch(() => []),
         api.getRecurringConfigs?.().catch(() => []) || [],
-        api.getGoals?.().catch(() => []) || []
+        api.getGoals?.().catch(() => []) || [],
+        api.getNotifications?.().catch(() => []) || []
       ]);
 
       if (profileRes?.user?.name || profileRes?.name) {
         setUserName(profileRes.user?.name || profileRes.name);
       }
-      
       if (dashRes?.data) setAnalytics(dashRes.data);
       setTransactions(txRes || []);
       setRecurring(recRes || []);
       setGoals(goalRes || []);
+      setNotifications(notifRes || []);
     } catch (e) {
       console.error('Dashboard load failed:', e);
     } finally {
@@ -106,7 +116,7 @@ export default function DashboardScreen() {
   if (loading) {
     return (
       <View style={styles.loader}>
-        <ActivityIndicator size="large" color={C.primary} />
+        <ActivityIndicator size="large" color={C.brand} />
       </View>
     );
   }
@@ -116,15 +126,14 @@ export default function DashboardScreen() {
   const spentPct = a.stats.totalIncome > 0 ? (a.stats.totalExpense / a.stats.totalIncome) * 100 : 0;
   const isOverBudget = spentPct > 100;
 
-  // Render the selected list item
   const renderListItem = (item: any, index: number) => {
     let content;
 
     if (activeTab === 'Goals') {
       content = (
         <View style={styles.recordCard}>
-          <View style={[styles.iconBox, { backgroundColor: 'rgba(142, 68, 173, 0.1)' }]}>
-            <MaterialCommunityIcons name="star-shooting" size={22} color="#8E44AD" />
+          <View style={styles.iconBox}>
+            <MaterialCommunityIcons name="flag-outline" size={18} color={C.text} />
           </View>
           <View style={styles.recordContent}>
             <Text style={styles.recordTitle}>{item.name}</Text>
@@ -139,8 +148,8 @@ export default function DashboardScreen() {
     } else if (activeTab === 'Recurring') {
       content = (
         <View style={styles.recordCard}>
-          <View style={[styles.iconBox, { backgroundColor: 'rgba(24, 153, 214, 0.1)' }]}>
-            <MaterialCommunityIcons name="calendar-sync" size={22} color="#1899D6" />
+          <View style={styles.iconBox}>
+            <MaterialCommunityIcons name="calendar-sync" size={18} color={C.text} />
           </View>
           <View style={styles.recordContent}>
             <Text style={styles.recordTitle}>{item.name || item.categoryName || 'Subscription'}</Text>
@@ -149,13 +158,27 @@ export default function DashboardScreen() {
           <Text style={styles.recordAmount}>{fmt(parseFloat(item.amount))}</Text>
         </View>
       );
+    } else if (activeTab === 'Alerts') {
+      content = (
+        <View style={styles.recordCard}>
+          <View style={styles.iconBox}>
+            <MaterialCommunityIcons name="bell-outline" size={18} color={C.text} />
+          </View>
+          <View style={styles.recordContent}>
+            <Text style={styles.recordTitle}>{item.title}</Text>
+            <Text style={styles.recordSubtext}>{item.message}</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={styles.miniLabel}>{new Date(item.createdAt).toLocaleDateString()}</Text>
+          </View>
+        </View>
+      );
     } else {
-      // History Tab
       const isIncome = item.type === 'income';
       content = (
         <View style={styles.recordCard}>
           <View style={styles.iconBox}>
-            <Ionicons name={item.categoryIcon as any || 'receipt-outline'} size={20} color={C.text} />
+            <Ionicons name={item.categoryIcon as any || 'receipt-outline'} size={18} color={C.text} />
           </View>
           <View style={styles.recordContent}>
             <Text style={styles.recordTitle}>{item.categoryName || 'Transaction'}</Text>
@@ -169,19 +192,21 @@ export default function DashboardScreen() {
     }
 
     return (
-      <MotiView key={item.id || index} from={{ opacity: 0, translateY: 10 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300, delay: index * 50 }}>
+      <MotiView
+        key={item.id || index}
+        from={{ opacity: 0, translateY: 8 }}
+        animate={{ opacity: 1, translateY: 0 }}
+        transition={{ type: 'timing', duration: 250, delay: index * 30 }}
+      >
         {content}
       </MotiView>
     );
   };
 
-  const currentListData = activeTab === 'History' ? transactions : activeTab === 'Recurring' ? recurring : goals;
+  const currentListData = activeTab === 'History' ? transactions : activeTab === 'Recurring' ? recurring : activeTab === 'Goals' ? goals : notifications;
 
-  // Format the date to look like "Monday, 29 March"
   const todayFormatted = new Date().toLocaleDateString('en-IN', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long'
+    weekday: 'long', day: 'numeric', month: 'long'
   });
 
   return (
@@ -189,34 +214,36 @@ export default function DashboardScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={C.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={C.brand} />}
       >
-        {/* ── HEADER ── */}
+        {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Hi, {userName} 👋</Text>
+            <Text style={styles.greeting}>Hi, {userName || 'there'}</Text>
             <Text style={styles.month}>{todayFormatted}</Text>
           </View>
-          
-          <TouchableOpacity style={styles.alertBadge} onPress={() => alert('Alerts screen coming soon!')} activeOpacity={0.8}>
-            <Ionicons name="notifications-outline" size={24} color={C.text} />
-            {redAlerts > 0 && (
-              <View style={styles.alertBadgeDot}>
-                <Text style={styles.alertBadgeNum}>{redAlerts}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => alert('Alerts screen coming soon!')} activeOpacity={0.6}>
+              <Ionicons name="notifications-outline" size={20} color={C.text} />
+              {redAlerts > 0 && (
+                <View style={styles.alertDot}>
+                  <Text style={styles.alertDotText}>{redAlerts}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn} onPress={handleLogout} activeOpacity={0.6}>
+              <Ionicons name="log-out-outline" size={20} color={C.red} />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* ── HERO: MONTHLY OVERVIEW ── */}
-        <MotiView from={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring', damping: 20 }} style={styles.heroCard}>
+        {/* Overview */}
+        <MotiView from={{ opacity: 0, translateY: 6 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300 }} style={styles.heroCard}>
           <Text style={styles.heroLabel}>Spent this month</Text>
           <AnimatedAmount value={a.stats.totalExpense} style={styles.heroAmount} />
-          
           <View style={styles.heroProgressBarContainer}>
-            <View style={[styles.heroProgressBar, { width: `${Math.min(spentPct, 100)}%`, backgroundColor: isOverBudget ? C.red : C.primary }]} />
+            <View style={[styles.heroProgressBar, { width: `${Math.min(spentPct, 100)}%`, backgroundColor: isOverBudget ? C.red : C.brand }]} />
           </View>
-          
           <View style={styles.heroFooter}>
             <Text style={styles.heroSubtext}>of {fmt(a.stats.totalIncome)} income</Text>
             <Text style={[styles.heroSubtext, { color: isOverBudget ? C.red : C.subtext, fontWeight: '600' }]}>
@@ -225,116 +252,102 @@ export default function DashboardScreen() {
           </View>
         </MotiView>
 
-        {/* ── NAVIGATION CHIPS ── */}
-        <MotiView from={{ opacity: 0, translateY: 10 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400, delay: 100 }} style={styles.chipsRow}>
-          <QuickChip icon="robot-outline" label="Ask Duo" onPress={() => router.push('/coach')} color={C.primary} />
-          <QuickChip icon="chart-donut" label="Charts" onPress={() => router.push('/charts')} color={C.gold} />
-        </MotiView>
+        {/* Quick actions */}
+        <View style={styles.chipsRow}>
+          <QuickChip icon="robot-outline" label="Ask Duo" onPress={() => router.push('/coach')} />
+          <QuickChip icon="chart-donut" label="Charts" onPress={() => router.push('/charts')} />
+        </View>
 
-        {/* ── LIST SECTION (History, Recurring, Goals) ── */}
-        <MotiView from={{ opacity: 0, translateY: 10 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400, delay: 200 }}>
-          <Text style={styles.sectionTitle}>Your Records</Text>
-          
-          <View style={styles.navToggle}>
-            {(['History', 'Recurring', 'Goals'] as ListTab[]).map((tab) => (
-              <TouchableOpacity 
-                key={tab} 
-                activeOpacity={0.7}
-                style={[styles.navBtn, activeTab === tab && styles.navBtnActive]}
-                onPress={() => { Haptics.selectionAsync(); setActiveTab(tab); }}
-              >
-                <Text style={[styles.navText, activeTab === tab && styles.navTextActive]}>{tab}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+        {/* List */}
+        <Text style={styles.sectionTitle}>Your records</Text>
+        <View style={styles.navToggle}>
+          {(['History', 'Recurring', 'Goals', 'Alerts'] as ListTab[]).map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              activeOpacity={0.6}
+              style={[styles.navBtn, activeTab === tab && styles.navBtnActive]}
+              onPress={() => { Haptics.selectionAsync(); setActiveTab(tab); }}
+            >
+              <Text style={[styles.navText, activeTab === tab && styles.navTextActive]}>{tab}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-          {/* Render the Lists (Sliced to top 10 so it doesn't get infinitely long on the dashboard) */}
-          <View style={styles.listContainer}>
-            {currentListData.length > 0 ? (
-              currentListData.slice(0, 10).map((item, index) => renderListItem(item, index))
-            ) : (
-              <View style={styles.emptyState}>
-                <Feather name="inbox" size={32} color={C.border} style={{ marginBottom: 10 }} />
-                <Text style={styles.emptyText}>No {activeTab.toLowerCase()} found.</Text>
-              </View>
-            )}
-          </View>
-        </MotiView>
+        <View style={styles.listContainer}>
+          {currentListData.length > 0 ? (
+            currentListData.slice(0, 10).map((item, index) => renderListItem(item, index))
+          ) : (
+            <View style={styles.emptyState}>
+              <Feather name="inbox" size={26} color={C.border} style={{ marginBottom: 8 }} />
+              <Text style={styles.emptyText}>No {activeTab.toLowerCase()} yet</Text>
+            </View>
+          )}
+        </View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-// ─── STYLES ─────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
-  scroll: { paddingHorizontal: 20, paddingBottom: 24 },
+  scroll: { paddingHorizontal: 20, paddingBottom: 20 },
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg },
 
-  // Header
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 16, paddingBottom: 24 },
-  greeting: { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
-  month: { fontSize: 14, color: C.subtext, fontWeight: '600', marginTop: 4 },
-  
-  alertBadge: {
-    width: 44, height: 44, borderRadius: 22,
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, paddingBottom: 20 },
+  greeting: { fontSize: 22, fontWeight: '700', color: C.text, letterSpacing: -0.4 },
+  month: { fontSize: 13, color: C.subtext, marginTop: 3 },
+
+  iconBtn: {
+    width: 38, height: 38, borderRadius: 19,
     backgroundColor: C.surface, borderWidth: 1, borderColor: C.border,
     alignItems: 'center', justifyContent: 'center',
   },
-  alertBadgeDot: {
-    position: 'absolute', top: -4, right: -4,
-    backgroundColor: C.red, borderRadius: 10,
-    minWidth: 20, height: 20, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: C.bg
+  alertDot: {
+    position: 'absolute', top: -3, right: -3,
+    backgroundColor: C.red, borderRadius: 8,
+    minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center',
   },
-  alertBadgeNum: { fontSize: 10, fontWeight: '800', color: 'white' },
+  alertDotText: { fontSize: 9, fontWeight: '700', color: 'white' },
 
-  // Hero Card
-  heroCard: { 
-    backgroundColor: C.surface, borderRadius: 24, padding: 24, marginBottom: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 12, elevation: 2,
-    borderWidth: 1, borderColor: C.border
+  heroCard: {
+    backgroundColor: C.surface, borderRadius: 18, padding: 20, marginBottom: 16,
+    borderWidth: 1, borderColor: C.border,
   },
-  heroLabel: { fontSize: 13, fontWeight: '700', color: C.subtext, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
-  heroAmount: { fontSize: 48, fontWeight: '800', color: C.text, letterSpacing: -1.5, marginBottom: 20 },
-  heroProgressBarContainer: { height: 8, backgroundColor: C.bg, borderRadius: 4, overflow: 'hidden', marginBottom: 12 },
-  heroProgressBar: { height: '100%', borderRadius: 4 },
+  heroLabel: { fontSize: 12, fontWeight: '600', color: C.subtext, marginBottom: 6, letterSpacing: 0.3 },
+  heroAmount: { fontSize: 40, fontWeight: '700', color: C.text, letterSpacing: -1, marginBottom: 16 },
+  heroProgressBarContainer: { height: 6, backgroundColor: C.fill, borderRadius: 3, overflow: 'hidden', marginBottom: 10 },
+  heroProgressBar: { height: '100%', borderRadius: 3 },
   heroFooter: { flexDirection: 'row', justifyContent: 'space-between' },
-  heroSubtext: { fontSize: 13, color: C.subtext, fontWeight: '500' },
+  heroSubtext: { fontSize: 12, color: C.subtext },
 
-  // Quick Nav Chips
-  chipsRow: { flexDirection: 'row', gap: 12, marginBottom: 32 },
-  chip: { flex: 1, alignItems: 'center', gap: 8, backgroundColor: C.surface, paddingVertical: 16, borderRadius: 20, borderWidth: 1, borderColor: C.border },
-  chipIconWrap: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  chipLabel: { fontSize: 13, fontWeight: '700', color: C.text },
+  chipsRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
+  chip: { flex: 1, alignItems: 'center', gap: 6, backgroundColor: C.surface, paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: C.border },
+  chipIconWrap: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: C.fill },
+  chipLabel: { fontSize: 12, fontWeight: '600', color: C.text },
 
-  // List Section
-  sectionTitle: { fontSize: 18, fontWeight: '800', color: C.text, marginBottom: 16 },
-  
-  // Segmented Control
-  navToggle: { flexDirection: 'row', backgroundColor: C.glass, borderRadius: 16, padding: 4, marginBottom: 16 },
-  navBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 12 },
-  navBtnActive: { backgroundColor: C.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
-  navText: { fontSize: 13, fontWeight: '600', color: C.subtext },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 12 },
+
+  navToggle: { flexDirection: 'row', backgroundColor: C.fill, borderRadius: 12, padding: 3, marginBottom: 14 },
+  navBtn: { flex: 1, paddingVertical: 9, alignItems: 'center', borderRadius: 9 },
+  navBtnActive: { backgroundColor: C.surface },
+  navText: { fontSize: 12, fontWeight: '500', color: C.subtext },
   navTextActive: { color: C.text, fontWeight: '700' },
 
-  // List Items
-  listContainer: { marginTop: 8 },
-  recordCard: { 
-    flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, 
-    padding: 16, borderRadius: 20, marginBottom: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 6, elevation: 1,
-    borderWidth: 1, borderColor: C.border
+  listContainer: { marginTop: 2 },
+  recordCard: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface,
+    padding: 14, borderRadius: 14, marginBottom: 8,
+    borderWidth: 1, borderColor: C.border,
   },
-  iconBox: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 16, backgroundColor: C.glass },
+  iconBox: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12, backgroundColor: C.fill },
   recordContent: { flex: 1 },
-  recordTitle: { fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 4 },
-  recordSubtext: { fontSize: 13, color: C.subtext, fontWeight: '500' },
-  recordAmount: { fontSize: 16, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
-  miniLabel: { fontSize: 10, color: C.subtext, fontWeight: '700', letterSpacing: 0.5, marginTop: 4 },
+  recordTitle: { fontSize: 14, fontWeight: '600', color: C.text, marginBottom: 2 },
+  recordSubtext: { fontSize: 12, color: C.subtext },
+  recordAmount: { fontSize: 14, fontWeight: '700', color: C.text },
+  miniLabel: { fontSize: 9, color: C.subtext, fontWeight: '600', letterSpacing: 0.3, marginTop: 2 },
 
-  emptyState: { padding: 40, alignItems: 'center', justifyContent: 'center', opacity: 0.8 },
-  emptyText: { fontSize: 14, color: C.subtext, fontWeight: '600' }
+  emptyState: { padding: 32, alignItems: 'center', justifyContent: 'center' },
+  emptyText: { fontSize: 13, color: C.subtext, fontWeight: '500' }
 });

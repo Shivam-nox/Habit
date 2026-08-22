@@ -8,7 +8,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'; 
 import { Ionicons, Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView } from 'moti';
 import { useApi } from '../../services/api'; 
 
@@ -27,17 +26,16 @@ interface CategoryItem {
   icon: keyof typeof Ionicons.glyphMap;
 }
 
-// --- Premium Palette ---
+// --- Minimal Palette ---
 const COLORS = {
-  primary: '#2E7D6E',     // Teal Green
-  primaryDark: '#1B4D44', // Deep Teal for gradients
-  secondary: '#A7D7C5',   // Soft Mint
-  background: '#F8FAFA',  // Premium Off-white
-  accent: '#FFC857',      // Warm Gold
-  text: '#1F2933',        // Dark Text
-  textMuted: '#627D98',   // Cool Grey for muted
+  primary: '#171717',     // Ink (primary actions)
+  accent: '#2E7D6E',      // Single accent color
+  background: '#FAFAFA',
+  surface: '#FFFFFF',
+  text: '#171717',
+  textMuted: '#71717A',
   white: '#FFFFFF',
-  border: '#E4E7EB'
+  border: '#E4E4E7',
 };
 
 const PAYMENT_MODES: { label: string; value: PaymentMode; icon: any }[] = [
@@ -116,7 +114,10 @@ export default function AddTransactionScreen() {
     setTxModalVisible(true);
   };
 
-  const handleTransactionSave = async () => {
+ const handleTransactionSave = async () => {
+    // 1. THIS IS THE FIX: Prevent double-taps while loading or showing success
+    if (isLoading || showSuccess) return; 
+
     if (!amount || isNaN(Number(amount))) {
       return Alert.alert("Wait a sec", "Please enter a valid amount.");
     }
@@ -158,26 +159,23 @@ export default function AddTransactionScreen() {
 
 const renderGridItem = ({ item, index }: { item: CategoryItem, index: number }) => (
     <MotiView
-      from={{ opacity: 0, translateY: 15 }} 
-      animate={{ opacity: 1, translateY: 0 }}
+      from={{ opacity: 0 }} 
+      animate={{ opacity: 1 }}
       transition={{ 
         type: 'timing',
-        duration: 400,
-        delay: index * 30
+        duration: 250,
+        delay: index * 15
       }}
       style={styles.gridItemContainer}
     >
       <TouchableOpacity 
         style={styles.gridItem} 
         onPress={() => handleCategoryPress(item)} 
-        activeOpacity={0.7}
+        activeOpacity={0.6}
       >
-        <LinearGradient
-          colors={['#FFFFFF', '#F0F4F4']}
-          style={styles.iconBox}
-        >
-          <Ionicons name={item.icon} size={24} color={COLORS.primary} />
-        </LinearGradient>
+        <View style={styles.iconBox}>
+          <Ionicons name={item.icon} size={22} color={COLORS.text} />
+        </View>
         <Text style={styles.gridLabel} numberOfLines={1}>{item.name}</Text>
       </TouchableOpacity>
     </MotiView>
@@ -185,12 +183,12 @@ const renderGridItem = ({ item, index }: { item: CategoryItem, index: number }) 
 
   return (
    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      {/* Animated Header */}
+      {/* Header */}
       <View style={styles.headerRow}>
-        <MotiView from={{ opacity: 0, translateX: -20 }} animate={{ opacity: 1, translateX: 0 }} transition={{ type: 'timing', duration: 500 }}>
+        <View>
            <Text style={styles.greetingTitle}>Track</Text>
            <Text style={styles.greetingSubtitle}>Where's it going?</Text>
-        </MotiView>
+        </View>
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.headerIconBtn} onPress={() => setRegularPayModalVisible(true)}>
             <Feather name="calendar" size={18} color={COLORS.text} />
@@ -201,7 +199,7 @@ const renderGridItem = ({ item, index }: { item: CategoryItem, index: number }) 
         </View>
       </View>
 
-      {/* Premium Segmented Control */}
+      {/* Segmented Control */}
       <View style={styles.tabWrapper}>
         <View style={styles.tabBackground}>
           {(['Expense', 'Income'] as TabType[]).map((tab) => (
@@ -209,7 +207,7 @@ const renderGridItem = ({ item, index }: { item: CategoryItem, index: number }) 
               key={tab} 
               style={[styles.tab, activeTab === tab && styles.activeTab]} 
               onPress={() => { 
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); 
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); 
                 setActiveTab(tab); 
               }}
             >
@@ -232,7 +230,7 @@ const renderGridItem = ({ item, index }: { item: CategoryItem, index: number }) 
         />
       </View>
 
-      {/* Modern Bottom Sheet Modal */}
+      {/* Bottom Sheet Modal */}
       <Modal visible={isTxModalVisible} animationType="slide" transparent={true} onRequestClose={() => setTxModalVisible(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
           <ScrollView contentContainerStyle={styles.scrollContent} bounces={false} showsVerticalScrollIndicator={false}>
@@ -242,9 +240,9 @@ const renderGridItem = ({ item, index }: { item: CategoryItem, index: number }) 
 
               <View style={styles.modalHeader}>
                 <View style={styles.modalTitleContainer}>
-                  <LinearGradient colors={['#FFFFFF', '#F0F4F4']} style={styles.modalHeaderIcon}>
-                    <Ionicons name={selectedCategory?.icon as any} size={22} color={COLORS.primary} />
-                  </LinearGradient>
+                  <View style={styles.modalHeaderIcon}>
+                    <Ionicons name={selectedCategory?.icon as any} size={20} color={COLORS.text} />
+                  </View>
                   <Text style={styles.modalTitle}>{selectedCategory?.name}</Text>
                 </View>
                 <TouchableOpacity onPress={() => setTxModalVisible(false)} disabled={isLoading || showSuccess} style={styles.closeBtn}>
@@ -257,7 +255,7 @@ const renderGridItem = ({ item, index }: { item: CategoryItem, index: number }) 
                 <TextInput 
                   style={styles.amountInput} 
                   placeholder="0" 
-                  placeholderTextColor={COLORS.secondary} 
+                  placeholderTextColor={COLORS.border} 
                   keyboardType="numeric" 
                   value={amount} 
                   onChangeText={setAmount} 
@@ -277,7 +275,7 @@ const renderGridItem = ({ item, index }: { item: CategoryItem, index: number }) 
                       <Ionicons 
                         name={mode.icon} 
                         size={16} 
-                        color={paymentMode === mode.value ? COLORS.primary : COLORS.textMuted} 
+                        color={paymentMode === mode.value ? COLORS.text : COLORS.textMuted} 
                         style={{marginRight: 6}}
                       />
                       <Text style={[styles.chipText, paymentMode === mode.value && styles.chipTextActive]}>
@@ -293,16 +291,16 @@ const renderGridItem = ({ item, index }: { item: CategoryItem, index: number }) 
                   <Text style={styles.sectionLabel}>Classification</Text>
                   <View style={styles.toggleContainer}>
                     <TouchableOpacity 
-                      style={[styles.toggleBtn, intent === 'need' && styles.toggleNeedActive]} 
+                      style={[styles.toggleBtn, intent === 'need' && styles.toggleBtnActive]} 
                       onPress={() => { Haptics.selectionAsync(); setIntent('need'); }}
                     >
-                      <Text style={[styles.toggleText, intent === 'need' && styles.toggleNeedTextActive]}>Need</Text>
+                      <Text style={[styles.toggleText, intent === 'need' && styles.toggleTextActive]}>Need</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
-                      style={[styles.toggleBtn, intent === 'want' && styles.toggleWantActive]} 
+                      style={[styles.toggleBtn, intent === 'want' && styles.toggleBtnActive]} 
                       onPress={() => { Haptics.selectionAsync(); setIntent('want'); }}
                     >
-                      <Text style={[styles.toggleText, intent === 'want' && styles.toggleWantTextActive]}>Want</Text>
+                      <Text style={[styles.toggleText, intent === 'want' && styles.toggleTextActive]}>Want</Text>
                     </TouchableOpacity>
                   </View>
                 </>
@@ -319,26 +317,24 @@ const renderGridItem = ({ item, index }: { item: CategoryItem, index: number }) 
                 />
               </View>
 
-              {/* Premium Gradient Button */}
-              <TouchableOpacity onPress={handleTransactionSave} disabled={isLoading || showSuccess} activeOpacity={0.8} style={{marginTop: 10}}>
-                <LinearGradient
-                  colors={[COLORS.primary, COLORS.primaryDark]}
-                  start={{x: 0, y: 0}}
-                  end={{x: 1, y: 1}}
-                  style={styles.primaryButton}
-                >
-                  <Text style={styles.primaryButtonText}>Save Transaction</Text>
-                </LinearGradient>
+              {/* Primary Button */}
+              <TouchableOpacity 
+                onPress={handleTransactionSave} 
+                disabled={isLoading || showSuccess} 
+                activeOpacity={0.8} 
+                style={styles.primaryButton}
+              >
+                <Text style={styles.primaryButtonText}>Save Transaction</Text>
               </TouchableOpacity>
 
               {/* Loading / Success State */}
               {(isLoading || showSuccess) && (
                 <View style={styles.loadingOverlay}>
                   {isLoading ? (
-                    <ActivityIndicator size="large" color={COLORS.primary} />
+                    <ActivityIndicator size="large" color={COLORS.text} />
                   ) : (
-                    <MotiView from={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={styles.successBadge}>
-                      <Ionicons name="checkmark-circle" size={64} color={COLORS.primary} />
+                    <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} style={styles.successBadge}>
+                      <Ionicons name="checkmark-circle" size={56} color={COLORS.text} />
                       <Text style={styles.successText}>Transaction logged</Text>
                     </MotiView>
                   )}
@@ -372,35 +368,30 @@ const styles = StyleSheet.create({
     marginBottom: 20 
   },
   greetingTitle: {
-    fontSize: 28,
-    fontWeight: '800',
+    fontSize: 26,
+    fontWeight: '700',
     color: COLORS.text,
-    letterSpacing: -0.5
+    letterSpacing: -0.4
   },
   greetingSubtitle: {
     fontSize: 14,
     color: COLORS.textMuted,
-    fontWeight: '500',
+    fontWeight: '400',
     marginTop: 2
   },
   headerActions: {
     flexDirection: 'row',
-    gap: 12
+    gap: 10
   },
   headerIconBtn: { 
-    padding: 12, 
-    backgroundColor: COLORS.white, 
-    borderRadius: 16, 
+    padding: 11, 
+    backgroundColor: COLORS.surface, 
+    borderRadius: 12, 
     borderWidth: 1, 
     borderColor: COLORS.border,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2
   },
 
-  // Premium Segmented Tabs
+  // Segmented Tabs
   tabWrapper: { 
     alignItems: 'center',
     marginBottom: 20,
@@ -408,24 +399,19 @@ const styles = StyleSheet.create({
   },
   tabBackground: { 
     flexDirection: 'row', 
-    backgroundColor: '#EAECEF', 
-    padding: 4, 
-    borderRadius: 20, 
+    backgroundColor: '#EFEFEF', 
+    padding: 3, 
+    borderRadius: 12, 
     width: '100%' 
   },
   tab: { 
     flex: 1, 
-    paddingVertical: 12, 
+    paddingVertical: 10, 
     alignItems: 'center', 
-    borderRadius: 16 
+    borderRadius: 9 
   },
   activeTab: { 
     backgroundColor: COLORS.white, 
-    shadowColor: COLORS.primary, 
-    shadowOffset: { width: 0, height: 4 }, 
-    shadowOpacity: 0.08, 
-    shadowRadius: 8, 
-    elevation: 4 
   },
   tabText: { 
     color: COLORS.textMuted, 
@@ -434,7 +420,7 @@ const styles = StyleSheet.create({
   },
   activeTabText: { 
     color: COLORS.text, 
-    fontWeight: '800' 
+    fontWeight: '700' 
   },
 
   // Grid Categories
@@ -450,7 +436,7 @@ const styles = StyleSheet.create({
   },
   gridItemContainer: { 
     width: '23%', 
-    marginBottom: 24 
+    marginBottom: 22 
   },
   gridItem: { 
     alignItems: 'center' 
@@ -458,24 +444,19 @@ const styles = StyleSheet.create({
   iconBox: { 
     width: width * 0.16, 
     height: width * 0.16, 
-    borderRadius: 22, 
-    backgroundColor: COLORS.white, 
+    borderRadius: 16, 
+    backgroundColor: COLORS.surface, 
     alignItems: 'center', 
     justifyContent: 'center', 
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
-    shadowColor: COLORS.primaryDark,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3
+    borderColor: COLORS.border,
   },
   gridLabel: { 
     color: COLORS.text, 
     fontSize: 11, 
     textAlign: 'center', 
-    fontWeight: '600',
+    fontWeight: '500',
     opacity: 0.8
   },
 
@@ -483,7 +464,7 @@ const styles = StyleSheet.create({
   modalOverlay: { 
     flex: 1, 
     justifyContent: 'flex-end', 
-    backgroundColor: 'rgba(15, 23, 30, 0.4)' 
+    backgroundColor: 'rgba(15, 23, 30, 0.35)' 
   }, 
   scrollContent: { 
     flexGrow: 1, 
@@ -494,19 +475,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24, 
     paddingTop: 16,
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
-    borderTopLeftRadius: 32, 
-    borderTopRightRadius: 32, 
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 20
+    borderTopLeftRadius: 24, 
+    borderTopRightRadius: 24, 
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderBottomWidth: 0,
   }, 
   modalDragIndicator: {
-    width: 40,
-    height: 5,
-    backgroundColor: '#D9DFE5',
-    borderRadius: 3,
+    width: 36,
+    height: 4,
+    backgroundColor: COLORS.border,
+    borderRadius: 2,
     alignSelf: 'center',
     marginBottom: 20
   },
@@ -522,25 +501,22 @@ const styles = StyleSheet.create({
     alignItems: 'center' 
   },
   modalHeaderIcon: { 
-    padding: 12, 
-    borderRadius: 16, 
-    marginRight: 14,
+    padding: 10, 
+    borderRadius: 12, 
+    marginRight: 12,
     borderWidth: 1,
-    borderColor: '#F0F4F4',
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.background,
   },
   modalTitle: { 
     color: COLORS.text, 
-    fontSize: 20, 
-    fontWeight: '800' 
+    fontSize: 18, 
+    fontWeight: '700' 
   },
   closeBtn: {
     backgroundColor: COLORS.background,
-    padding: 10,
-    borderRadius: 20
+    padding: 9,
+    borderRadius: 18
   },
 
   // Input
@@ -551,27 +527,27 @@ const styles = StyleSheet.create({
     marginBottom: 40 
   },
   currencySymbol: { 
-    fontSize: 48, 
-    color: COLORS.primary, 
-    marginRight: 8, 
-    fontWeight: '600' 
+    fontSize: 42, 
+    color: COLORS.textMuted, 
+    marginRight: 6, 
+    fontWeight: '500' 
   },
   amountInput: { 
-    fontSize: 64, 
+    fontSize: 60, 
     color: COLORS.text, 
-    fontWeight: '800', 
+    fontWeight: '700', 
     minWidth: 80, 
     textAlign: 'center',
-    letterSpacing: -2
+    letterSpacing: -1.5
   },
   
   sectionLabel: { 
     color: COLORS.textMuted, 
     fontSize: 12, 
-    fontWeight: '700', 
+    fontWeight: '600', 
     marginBottom: 12, 
     textTransform: 'uppercase', 
-    letterSpacing: 1.2 
+    letterSpacing: 1 
   },
 
   // Chips & Toggles
@@ -582,72 +558,52 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     alignItems: 'center', 
     backgroundColor: COLORS.background, 
-    paddingVertical: 14, 
-    paddingHorizontal: 20, 
-    borderRadius: 16, 
+    paddingVertical: 12, 
+    paddingHorizontal: 18, 
+    borderRadius: 12, 
     borderWidth: 1, 
     borderColor: COLORS.border
   },
   chipActive: { 
-    backgroundColor: 'rgba(46, 125, 110, 0.08)', 
-    borderColor: COLORS.primary 
+    backgroundColor: COLORS.surface, 
+    borderColor: COLORS.text 
   },
   chipText: { 
     color: COLORS.textMuted, 
     fontSize: 14, 
-    fontWeight: '600' 
+    fontWeight: '500' 
   },
   chipTextActive: { 
-    color: COLORS.primary, 
-    fontWeight: '800' 
+    color: COLORS.text, 
+    fontWeight: '700' 
   },
 
   toggleContainer: { 
     flexDirection: 'row', 
-    gap: 12, 
+    gap: 10, 
     marginBottom: 28 
   },
   toggleBtn: { 
     flex: 1, 
-    paddingVertical: 16, 
+    paddingVertical: 14, 
     alignItems: 'center', 
-    borderRadius: 16, 
+    borderRadius: 12, 
     backgroundColor: COLORS.background, 
     borderWidth: 1, 
     borderColor: COLORS.border 
   },
-  
-  // Custom Toggles for Need/Want
-  toggleNeedActive: {
-    backgroundColor: 'rgba(46, 125, 110, 0.08)', 
-    borderColor: COLORS.primary
-  },
-  toggleNeedTextActive: {
-    color: COLORS.primary,
-    fontWeight: '800'
-  },
-  toggleWantActive: {
-    backgroundColor: 'rgba(255, 200, 87, 0.12)', 
-    borderColor: COLORS.accent
-  },
-  toggleWantTextActive: {
-    color: '#C68B1C', 
-    fontWeight: '800'
-  },
-
-  // General Toggles
   toggleBtnActive: { 
-    backgroundColor: 'rgba(46, 125, 110, 0.08)', 
-    borderColor: COLORS.primary 
+    backgroundColor: COLORS.surface, 
+    borderColor: COLORS.text 
   }, 
   toggleText: { 
     color: COLORS.textMuted, 
     fontSize: 14, 
-    fontWeight: '600' 
+    fontWeight: '500' 
   },
   toggleTextActive: { 
-    color: COLORS.primary, 
-    fontWeight: '800' 
+    color: COLORS.text, 
+    fontWeight: '700' 
   }, 
 
   // Text Inputs
@@ -655,9 +611,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     alignItems: 'center', 
     backgroundColor: COLORS.background, 
-    borderRadius: 16, 
+    borderRadius: 12, 
     paddingHorizontal: 16, 
-    height: 60, 
+    height: 54, 
     marginBottom: 16, 
     borderWidth: 1, 
     borderColor: COLORS.border
@@ -668,47 +624,44 @@ const styles = StyleSheet.create({
   textInput: { 
     flex: 1, 
     color: COLORS.text, 
-    fontSize: 16, 
+    fontSize: 15, 
     height: '100%',
-    fontWeight: '500'
+    fontWeight: '400'
   },
 
   // Primary Button
   primaryButton: { 
-    height: 60, 
-    borderRadius: 16, 
+    height: 54, 
+    borderRadius: 12, 
     alignItems: 'center', 
     justifyContent: 'center', 
-    shadowColor: COLORS.primaryDark,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6
+    backgroundColor: COLORS.text,
+    marginTop: 6,
   },
   primaryButtonText: { 
     color: COLORS.white, 
-    fontSize: 18, 
-    fontWeight: '800',
-    letterSpacing: 0.5
+    fontSize: 16, 
+    fontWeight: '600',
+    letterSpacing: 0.2
   },
 
   // Loading / Success
   loadingOverlay: { 
     ...StyleSheet.absoluteFillObject, 
-    backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+    backgroundColor: 'rgba(255, 255, 255, 0.97)', 
     justifyContent: 'center', 
     alignItems: 'center', 
     zIndex: 10, 
-    borderTopLeftRadius: 32, 
-    borderTopRightRadius: 32 
+    borderTopLeftRadius: 24, 
+    borderTopRightRadius: 24 
   },
   successBadge: { 
     alignItems: 'center' 
   },
   successText: { 
     color: COLORS.text, 
-    fontSize: 20, 
-    fontWeight: '800', 
-    marginTop: 16 
+    fontSize: 17, 
+    fontWeight: '600', 
+    marginTop: 14 
   }
 });

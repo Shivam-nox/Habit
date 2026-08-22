@@ -1,3 +1,4 @@
+// frontend/components/RecurringPaymentModal.tsx
 import React, { useState } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, StyleSheet, 
@@ -6,7 +7,6 @@ import {
 import { Feather, Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView, AnimatePresence } from 'moti';
 import { useApi } from '.././services/api'; 
 
@@ -18,19 +18,18 @@ interface RecurringPaymentModalProps {
   onClose: () => void;
 }
 
-// --- Synchronized Premium Palette ---
+// --- Minimal Palette ---
 const COLORS = {
-  primary: '#2E7D6E',     // Deep Teal
-  primaryDark: '#1B4D44', // Darker Teal for gradients
-  background: '#F8FAFA',  // Ultra-light cool gray/white
-  surface: '#FFFFFF',     // Pure white
-  text: '#0F172A',        // Slate 900
-  textMuted: '#64748B',   // Slate 500
-  border: '#E2E8F0',      // Slate 200
-  success: '#059669',     // Emerald 600
+  primary: '#000000',
+  background: '#FFFFFF',
+  surface: '#F9F9F9',
+  border: '#E5E5E5',
+  text: '#111111',
+  textMuted: '#888888',
+  white: '#FFFFFF',
+  success: '#000000',
 };
 
-// ✅ FIXED: Helper component defined OUTSIDE the parent to prevent typing bugs
 const FormRow = ({ children, delay }: { children: React.ReactNode, delay: number }) => (
   <MotiView
     from={{ opacity: 0, translateY: 15 }}
@@ -219,15 +218,9 @@ export default function RecurringPaymentModal({ visible, onClose }: RecurringPay
                 activeOpacity={0.8}
                 onPress={handleSave}
                 disabled={isLoading || isSuccess}
-                style={{ marginTop: 40 }}
+                style={[styles.primaryButton, (isLoading || isSuccess) && { opacity: 0.5 }]}
               >
-                <LinearGradient
-                  colors={[COLORS.primary, COLORS.primaryDark]}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                  style={[styles.primaryButton, (isLoading || isSuccess) && { opacity: 0.6 }]}
-                >
-                  <Text style={styles.primaryButtonText}>Schedule Payment</Text>
-                </LinearGradient>
+                <Text style={styles.primaryButtonText}>Schedule Payment</Text>
               </TouchableOpacity>
             </FormRow>
 
@@ -255,7 +248,7 @@ export default function RecurringPaymentModal({ visible, onClose }: RecurringPay
                   style={styles.successContainer}
                 >
                   <View style={styles.iconCircle}>
-                    <Ionicons name="checkmark" size={48} color={COLORS.surface} />
+                    <Ionicons name="checkmark" size={40} color={COLORS.surface} />
                   </View>
                   <Text style={styles.successTitle}>Scheduled</Text>
                   <Text style={styles.successSub}>Your recurring payment is set.</Text>
@@ -317,7 +310,7 @@ const styles = StyleSheet.create({
   regInput: { 
     backgroundColor: COLORS.surface, 
     color: COLORS.text, 
-    borderRadius: 16, 
+    borderRadius: 12, 
     paddingHorizontal: 16, 
     height: 56, 
     fontSize: 15, 
@@ -349,7 +342,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     justifyContent: 'space-between', 
     backgroundColor: COLORS.surface, 
-    borderRadius: 16, 
+    borderRadius: 12, 
     paddingHorizontal: 16, 
     height: 56, 
     borderWidth: 1, 
@@ -364,23 +357,20 @@ const styles = StyleSheet.create({
   // Minimal Segmented Control
   segmentContainer: { 
     flexDirection: 'row', 
-    backgroundColor: '#EAECEF', 
-    borderRadius: 16, 
-    padding: 4 
+    backgroundColor: COLORS.surface, 
+    borderRadius: 12, 
+    padding: 4,
+    borderWidth: 1,
+    borderColor: COLORS.border
   },
   segmentBtn: { 
     flex: 1, 
     paddingVertical: 12, 
     alignItems: 'center', 
-    borderRadius: 12 
+    borderRadius: 8 
   },
   segmentBtnActive: { 
-    backgroundColor: COLORS.surface, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 2 }, 
-    shadowOpacity: 0.04, 
-    shadowRadius: 4, 
-    elevation: 2 
+    backgroundColor: COLORS.primary, 
   },
   segmentText: { 
     color: COLORS.textMuted, 
@@ -388,7 +378,7 @@ const styles = StyleSheet.create({
     fontSize: 14 
   },
   segmentTextActive: { 
-    color: COLORS.text, 
+    color: COLORS.white, 
     fontWeight: '700' 
   },
   
@@ -401,13 +391,13 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14, 
     alignItems: 'center', 
-    borderRadius: 14, 
+    borderRadius: 12, 
     backgroundColor: COLORS.surface, 
     borderWidth: 1, 
     borderColor: COLORS.border 
   },
   freqChipActive: { 
-    backgroundColor: 'rgba(46, 125, 110, 0.08)', 
+    backgroundColor: COLORS.primary, 
     borderColor: COLORS.primary 
   },
   freqText: { 
@@ -416,7 +406,7 @@ const styles = StyleSheet.create({
     fontWeight: '600' 
   },
   freqTextActive: { 
-    color: COLORS.primary, 
+    color: COLORS.white, 
     fontWeight: '700' 
   },
   
@@ -427,27 +417,23 @@ const styles = StyleSheet.create({
   
   // Primary Button
   primaryButton: { 
-    height: 60, 
-    borderRadius: 16, 
+    height: 56, 
+    borderRadius: 12, 
     alignItems: 'center', 
     justifyContent: 'center',
-    shadowColor: COLORS.primaryDark,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 4
+    backgroundColor: COLORS.primary,
+    marginTop: 40,
   },
   primaryButtonText: { 
-    color: COLORS.surface, 
+    color: COLORS.white, 
     fontSize: 16, 
-    fontWeight: '800',
-    letterSpacing: 0.5
+    fontWeight: '700',
   },
   
   // Clean Overlay
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
@@ -457,18 +443,13 @@ const styles = StyleSheet.create({
     padding: 30,
   },
   iconCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: COLORS.success,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
-    shadowColor: COLORS.success,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8
   },
   successTitle: {
     fontSize: 24,

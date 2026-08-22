@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Dimensions, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import Slider from '@react-native-community/slider';
 import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
+import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -38,7 +40,7 @@ const COLORS = {
 export default function FinancialOnboarding({ visible, onComplete }: { visible: boolean, onComplete: (data: any) => void }) {
   const [step, setStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false); // New loading state
-  
+
   // Form State
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
   const [income, setIncome] = useState(30000);
@@ -50,12 +52,12 @@ export default function FinancialOnboarding({ visible, onComplete }: { visible: 
   // --- Handlers ---
   const handleNext = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
+
     if (step === 0 && !selectedGoal) {
       Alert.alert("Wait a sec!", "Please select a main objective so we can tailor your experience.");
       return;
     }
-    
+
     if (step < TOTAL_STEPS - 1) {
       setStep(step + 1);
     } else {
@@ -71,7 +73,7 @@ export default function FinancialOnboarding({ visible, onComplete }: { visible: 
 
   const handleFinish = () => {
     setIsLoading(true);
-    
+
     // Simulate a brief "processing" delay for a premium AI feel
     setTimeout(() => {
       onComplete({
@@ -87,7 +89,7 @@ export default function FinancialOnboarding({ visible, onComplete }: { visible: 
 
   const toggleWeakness = (item: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSelectedWeakness(prev => 
+    setSelectedWeakness(prev =>
       prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item]
     );
   };
@@ -107,7 +109,7 @@ export default function FinancialOnboarding({ visible, onComplete }: { visible: 
             <Text style={styles.mainSubtitle}>This defines how your coach operates.</Text>
             <View style={styles.goalContainer}>
               {GOALS.map((goal) => (
-                <TouchableOpacity 
+                <TouchableOpacity
                   key={goal.id}
                   style={[styles.goalCard, selectedGoal === goal.id && styles.goalCardActive]}
                   onPress={() => selectGoal(goal.id)}
@@ -138,8 +140,8 @@ export default function FinancialOnboarding({ visible, onComplete }: { visible: 
                 style={styles.slider}
                 minimumValue={10000} maximumValue={300000} step={5000}
                 value={income} onValueChange={setIncome}
-                minimumTrackTintColor={COLORS.primary} 
-                maximumTrackTintColor={'rgba(167, 215, 197, 0.4)'} 
+                minimumTrackTintColor={COLORS.primary}
+                maximumTrackTintColor={'rgba(167, 215, 197, 0.4)'}
                 thumbTintColor={COLORS.accent}
               />
             </View>
@@ -156,8 +158,8 @@ export default function FinancialOnboarding({ visible, onComplete }: { visible: 
                 style={styles.slider}
                 minimumValue={0} maximumValue={income} step={1000}
                 value={needs} onValueChange={setNeeds}
-                minimumTrackTintColor={COLORS.primary} 
-                maximumTrackTintColor={'rgba(167, 215, 197, 0.4)'}  
+                minimumTrackTintColor={COLORS.primary}
+                maximumTrackTintColor={'rgba(167, 215, 197, 0.4)'}
                 thumbTintColor={COLORS.accent}
               />
             </View>
@@ -170,9 +172,9 @@ export default function FinancialOnboarding({ visible, onComplete }: { visible: 
             <Text style={styles.mainSubtitle}>What drains your wallet the fastest?</Text>
             <View style={styles.bubbleContainer}>
               {WEAKNESSES.map(w => (
-                <TouchableOpacity 
-                  key={w} 
-                  style={[styles.bubble, selectedWeakness.includes(w) && styles.bubbleActive]} 
+                <TouchableOpacity
+                  key={w}
+                  style={[styles.bubble, selectedWeakness.includes(w) && styles.bubbleActive]}
                   onPress={() => toggleWeakness(w)}
                   activeOpacity={0.8}
                 >
@@ -192,7 +194,7 @@ export default function FinancialOnboarding({ visible, onComplete }: { visible: 
   return (
     <View style={styles.fullScreenContainer}>
       <SafeAreaView style={styles.safeArea}>
-        
+
         {/* Loading Overlay */}
         {isLoading && (
           <View style={styles.loadingOverlay}>
@@ -201,8 +203,8 @@ export default function FinancialOnboarding({ visible, onComplete }: { visible: 
           </View>
         )}
 
-        <ScrollView 
-          style={styles.scrollView} 
+        <ScrollView
+          style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           scrollEnabled={!isLoading} // Disable scroll while loading
@@ -210,12 +212,12 @@ export default function FinancialOnboarding({ visible, onComplete }: { visible: 
           {/* Segmented Progress Bar (Flows with Scroll) */}
           <View style={styles.progressWrapper}>
             {Array.from({ length: TOTAL_STEPS }).map((_, idx) => (
-              <View 
-                key={idx} 
+              <View
+                key={idx}
                 style={[
-                  styles.progressSegment, 
+                  styles.progressSegment,
                   idx <= step ? styles.progressSegmentActive : styles.progressSegmentInactive
-                ]} 
+                ]}
               />
             ))}
           </View>
@@ -232,12 +234,12 @@ export default function FinancialOnboarding({ visible, onComplete }: { visible: 
             ) : (
               <View style={{ flex: 1 }} />
             )}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
-                styles.nextBtn, 
+                styles.nextBtn,
                 (step === 0 && !selectedGoal) && styles.nextBtnDisabled,
                 isLoading && styles.nextBtnDisabled
-              ]} 
+              ]}
               onPress={handleNext}
               disabled={isLoading || (step === 0 && !selectedGoal)}
             >
@@ -254,16 +256,16 @@ export default function FinancialOnboarding({ visible, onComplete }: { visible: 
 }
 
 const styles = StyleSheet.create({
-  fullScreenContainer: { 
-    ...StyleSheet.absoluteFillObject, 
-    backgroundColor: COLORS.background, 
-    zIndex: 999 
+  fullScreenContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: COLORS.background,
+    zIndex: 999
   },
-  safeArea: { 
-    flex: 1, 
-    backgroundColor: COLORS.background 
+  safeArea: {
+    flex: 1,
+    backgroundColor: COLORS.background
   },
-  
+
   // Loading Overlay
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -286,7 +288,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 40 
+    paddingBottom: 40
   },
 
   // Segmented Progress Bar
@@ -310,36 +312,36 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(167, 215, 197, 0.3)', // Very subtle mint
   },
 
-  contentArea: { 
-    flex: 1, 
-    paddingHorizontal: 24, 
+  contentArea: {
+    flex: 1,
+    paddingHorizontal: 24,
   },
-  stepContainer: { 
-    flex: 1 
+  stepContainer: {
+    flex: 1
   },
-  
+
   // Minimal Typography
-  mainTitle: { 
-    fontSize: 26, 
-    fontWeight: '700', 
-    color: COLORS.text, 
-    letterSpacing: -0.3 
+  mainTitle: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: COLORS.text,
+    letterSpacing: -0.3
   },
-  mainSubtitle: { 
-    fontSize: 15, 
-    color: COLORS.textMuted, 
-    marginTop: 6, 
+  mainSubtitle: {
+    fontSize: 15,
+    color: COLORS.textMuted,
+    marginTop: 6,
     lineHeight: 22,
     fontWeight: '400'
   },
-  
+
   // Glassy Rectangular Goal Cards
-  goalContainer: { 
-    marginTop: 28, 
-    gap: 12 
+  goalContainer: {
+    marginTop: 28,
+    gap: 12
   },
-  goalCard: { 
-    flexDirection: 'row', 
+  goalCard: {
+    flexDirection: 'row',
     paddingVertical: 18,
     paddingHorizontal: 16,
     borderRadius: 12, // More rectangular
@@ -348,127 +350,127 @@ const styles = StyleSheet.create({
     borderColor: COLORS.glassBorder,
     alignItems: 'center',
   },
-  goalCardActive: { 
-    backgroundColor: COLORS.white, 
-    borderColor: COLORS.primary, 
+  goalCardActive: {
+    backgroundColor: COLORS.white,
+    borderColor: COLORS.primary,
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 10,
-    elevation: 2 
+    elevation: 2
   },
-  goalIcon: { 
+  goalIcon: {
     fontSize: 24, // Scaled down slightly
-    marginRight: 14 
+    marginRight: 14
   },
-  goalTextContainer: { 
-    flex: 1 
+  goalTextContainer: {
+    flex: 1
   },
-  goalTitle: { 
-    fontSize: 16, 
-    fontWeight: '600', 
-    color: COLORS.text, 
-    marginBottom: 2 
+  goalTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 2
   },
   goalTitleActive: {
     color: COLORS.primary, // Subtle active color change, not a heavy block
   },
-  goalDesc: { 
-    fontSize: 13, 
-    color: COLORS.textMuted, 
-    lineHeight: 18 
+  goalDesc: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    lineHeight: 18
   },
   goalDescActive: {
     color: 'rgba(46, 125, 110, 0.7)', // Tinted text when active
   },
 
   // Minimal Sliders
-  sliderCard: { 
-    marginTop: 36, 
-    alignItems: 'center', 
-    backgroundColor: COLORS.glass, 
+  sliderCard: {
+    marginTop: 36,
+    alignItems: 'center',
+    backgroundColor: COLORS.glass,
     paddingVertical: 32,
-    paddingHorizontal: 24, 
-    borderRadius: 16, 
+    paddingHorizontal: 24,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: COLORS.glassBorder,
   },
-  amount: { 
-    fontSize: 34, 
-    fontWeight: '700', 
-    color: COLORS.primary, 
-    marginBottom: 24, 
-    letterSpacing: -0.5 
+  amount: {
+    fontSize: 34,
+    fontWeight: '700',
+    color: COLORS.primary,
+    marginBottom: 24,
+    letterSpacing: -0.5
   },
-  slider: { 
-    width: width - 80, 
-    height: 40 
+  slider: {
+    width: width - 80,
+    height: 40
   },
 
   // Minimal Weaknesses Bubbles
-  bubbleContainer: { 
-    flexDirection: 'row', 
-    flexWrap: 'wrap', 
-    gap: 10, 
-    marginTop: 28 
+  bubbleContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 28
   },
-  bubble: { 
-    paddingHorizontal: 16, 
-    paddingVertical: 10, 
+  bubble: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 8, // Rectangular look
     backgroundColor: COLORS.glass,
     borderWidth: 1,
     borderColor: COLORS.glassBorder,
   },
-  bubbleActive: { 
-    backgroundColor: COLORS.accent, 
-    borderColor: COLORS.accent 
+  bubbleActive: {
+    backgroundColor: COLORS.accent,
+    borderColor: COLORS.accent
   },
-  bubbleText: { 
-    color: COLORS.text, 
-    fontWeight: '500', 
-    fontSize: 14 
+  bubbleText: {
+    color: COLORS.text,
+    fontWeight: '500',
+    fontSize: 14
   },
-  bubbleTextActive: { 
+  bubbleTextActive: {
     color: COLORS.text, // Keep dark for contrast
     fontWeight: '600'
   },
 
   // Minimal Footer
-  footer: { 
-    flexDirection: 'row', 
+  footer: {
+    flexDirection: 'row',
     paddingHorizontal: 24,
     marginTop: 40,
     marginBottom: 20,
-    alignItems: 'center' 
+    alignItems: 'center'
   },
-  backBtn: { 
-    flex: 1, 
-    paddingVertical: 16 
+  backBtn: {
+    flex: 1,
+    paddingVertical: 16
   },
-  backBtnText: { 
-    color: COLORS.textMuted, 
-    fontSize: 15, 
-    fontWeight: '600' 
+  backBtnText: {
+    color: COLORS.textMuted,
+    fontSize: 15,
+    fontWeight: '600'
   },
-  nextBtn: { 
-    flex: 2, 
-    backgroundColor: COLORS.primary, 
+  nextBtn: {
+    flex: 2,
+    backgroundColor: COLORS.primary,
     paddingVertical: 16, // Slimmer button
     borderRadius: 12, // Matches the rectangular minimal theme
-    alignItems: 'center', 
-    shadowColor: COLORS.primary, 
-    shadowOffset: { width: 0, height: 4 }, 
-    shadowOpacity: 0.15, 
-    shadowRadius: 8, 
-    elevation: 4 
+    alignItems: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4
   },
-  nextBtnDisabled: { 
-    opacity: 0.5 
+  nextBtnDisabled: {
+    opacity: 0.5
   },
-  nextBtnText: { 
-    color: COLORS.white, 
-    fontSize: 15, 
-    fontWeight: '700' 
+  nextBtnText: {
+    color: COLORS.white,
+    fontSize: 15,
+    fontWeight: '700'
   }
 });

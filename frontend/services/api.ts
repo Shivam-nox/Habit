@@ -165,8 +165,9 @@
 // ───────────────────────────────────────────────────────────────
 
 import * as SecureStore from 'expo-secure-store';
-
-const BASE_URL = 'http://192.168.0.101:3000/api';
+const HOST=process.env.EXPO_PUBLIC_API_URL || ' '
+console.log('API HOST:', HOST);
+const BASE_URL = `${HOST}/api`;
 
 export const useApi = () => {
   const getHeaders = async () => {
@@ -207,6 +208,22 @@ export const useApi = () => {
 
     logout: async () => {
       await SecureStore.deleteItemAsync('jwt_token');
+    },
+
+    savePushToken: async (token: string) => {
+      const response = await fetch(`${BASE_URL}/auth/push-token`, {
+        method: 'POST',
+        headers: await getHeaders(),
+        body: JSON.stringify({ token }),
+      });
+      return handleResponse(response);
+    },
+
+    getNotifications: async () => {
+      const response = await fetch(`${BASE_URL}/notifications`, {
+        headers: await getHeaders(),
+      });
+      return handleResponse(response);
     },
 
     // ── TRANSACTIONS & CATEGORIES ─────────────────

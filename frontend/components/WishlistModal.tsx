@@ -1,3 +1,4 @@
+// frontend/components/WishlistModal.tsx
 import React, { useState } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, StyleSheet, 
@@ -6,7 +7,6 @@ import {
 import { Feather, Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView, AnimatePresence } from 'moti';
 import { useApi } from '.././services/api'; // Make sure path is correct!
 
@@ -15,19 +15,18 @@ interface WishlistModalProps {
   onClose: () => void;
 }
 
-// --- Synchronized Premium Palette ---
+// --- Minimal Palette ---
 const COLORS = {
-  primary: '#2E7D6E',     // Deep Teal
-  primaryDark: '#1B4D44', // Darker Teal
-  background: '#F8FAFA',  // Premium Off-white
-  surface: '#FFFFFF',     // Pure White
-  text: '#0F172A',        // Slate 900
-  textMuted: '#64748B',   // Slate 500
-  border: '#E2E8F0',      // Slate 200
-  success: '#059669',     // Emerald Green
+  primary: '#000000',
+  background: '#FFFFFF',
+  surface: '#F9F9F9',
+  border: '#E5E5E5',
+  text: '#111111',
+  textMuted: '#888888',
+  white: '#FFFFFF',
+  success: '#000000',
 };
 
-// ✅ FIXED: Helper component defined OUTSIDE the parent
 const FormRow = ({ children, delay }: { children: React.ReactNode, delay: number }) => (
   <MotiView
     from={{ opacity: 0, translateY: 15 }}
@@ -160,15 +159,9 @@ export default function WishlistModal({ visible, onClose }: WishlistModalProps) 
                 activeOpacity={0.8}
                 onPress={handleSave}
                 disabled={isLoading || isSuccess}
-                style={{ marginTop: 40 }}
+                style={[styles.primaryButton, (isLoading || isSuccess) && { opacity: 0.5 }]}
               >
-                <LinearGradient
-                  colors={[COLORS.primary, COLORS.primaryDark]}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                  style={[styles.primaryButton, (isLoading || isSuccess) && { opacity: 0.6 }]}
-                >
-                  <Text style={styles.primaryButtonText}>Add to Wishlist</Text>
-                </LinearGradient>
+                <Text style={styles.primaryButtonText}>Add to Wishlist</Text>
               </TouchableOpacity>
             </FormRow>
 
@@ -205,7 +198,7 @@ export default function WishlistModal({ visible, onClose }: WishlistModalProps) 
                   style={styles.successContainer}
                 >
                   <View style={styles.heartCircle}>
-                    <Ionicons name="heart" size={48} color={COLORS.surface} />
+                    <Ionicons name="heart" size={40} color={COLORS.surface} />
                   </View>
                   <Text style={styles.successTitle}>Goal Added</Text>
                   <Text style={styles.successSub}>We'll help you find ways to save for this.</Text>
@@ -261,7 +254,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     alignItems: 'center', 
     backgroundColor: COLORS.surface, 
-    borderRadius: 16, 
+    borderRadius: 12, 
     paddingHorizontal: 16, 
     height: 56, 
     borderWidth: 1,
@@ -288,7 +281,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: COLORS.surface, 
-    borderRadius: 16, 
+    borderRadius: 12, 
     paddingHorizontal: 16, 
     height: 56,
     borderWidth: 1,
@@ -300,25 +293,21 @@ const styles = StyleSheet.create({
     fontWeight: '500' 
   },
   primaryButton: {
-    height: 60,
-    borderRadius: 16,
+    height: 56,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: COLORS.primaryDark,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 4
+    backgroundColor: COLORS.primary,
+    marginTop: 40,
   },
   primaryButtonText: { 
-    color: COLORS.surface, 
+    color: COLORS.white, 
     fontSize: 16, 
-    fontWeight: '800',
-    letterSpacing: 0.5 
+    fontWeight: '700',
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
@@ -328,18 +317,13 @@ const styles = StyleSheet.create({
     padding: 30 
   },
   heartCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: COLORS.success, // Switched to the Emerald success color
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: COLORS.success, 
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
-    shadowColor: COLORS.success,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8
   },
   successTitle: { 
     fontSize: 24, 

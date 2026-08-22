@@ -1,0 +1,200 @@
+Create a **short, premium, highly impactful presentation** for **Spendly – AI Expense Habit Coach**.
+
+The deck should feel like a **modern startup pitch + product demo + technical showcase**.
+Keep it to **7 slides maximum**.
+Use **very short text**, strong hierarchy, and clean visuals.
+Every slide should have:
+
+* a sharp title
+* 3 to 5 short bullets only
+* one clear takeaway
+* a strong visual suggestion
+
+Overall style:
+
+* dark premium theme
+* teal / gold / slate color palette
+* minimal, elegant, polished
+* modern fintech + AI feel
+* lots of whitespace
+* large bold headings
+* simple icons, charts, phone mockups, flow diagrams
+* avoid clutter and long paragraphs
+* make it look like a real product pitch deck, not an academic report
+
+Spendly is an AI-powered expense habit coach with conversational expense logging, AI-based transaction classification, onboarding-driven personalization, and an Adaptive Spending Algorithm that produces budgets, alerts, predictions, and coaching insights. The backend stores users, financial profiles, transactions, budgets, goals, habit metrics, summaries, and AI chat history.  
+
+### Slide 1 — Title / Hook
+
+**Title:** Spendly
+**Subtitle:** AI Expense Habit Coach
+
+Include:
+
+* one-line positioning: “Track smarter. Spend better. Build stronger money habits.”
+* mention it is a full-stack AI finance product
+* add a small credibility line: React Native + Node.js + PostgreSQL + Groq AI
+
+Look:
+
+* hero slide
+* big product name
+* mobile app mockup or elegant dashboard mockup
+* dark background with soft gradient glow
+* minimal text, high visual impact
+
+### Slide 2 — Problem
+
+**Title:** Why people fail to manage money
+
+Include:
+
+* people log expenses but do not change behavior
+* budgeting apps show numbers, not guidance
+* manual tracking is boring and inconsistent
+* most apps are not personalized
+
+Add one strong line:
+“Tracking money is easy. Changing habits is the real challenge.”
+
+Look:
+
+* split layout
+* left side: problem statements
+* right side: simple visual of scattered spending / confusing charts / frustrated user
+* use muted, slightly tense visuals
+
+### Slide 3 — Solution
+
+**Title:** Spendly turns spending into coaching
+
+Include:
+
+* conversational expense logging
+* AI classifies transactions automatically
+* onboarding data personalizes responses from day one
+* the app gives practical coaching, not generic advice
+
+Add a one-line summary:
+“Spendly converts raw expense data into habit-aware guidance.”
+
+Look:
+
+* clean flow visual: User → Chat → AI Classification → Insights → Better habits
+* use simple arrows or step blocks
+* keep the slide very polished and product-like
+
+### Slide 4 — Core Product Intelligence
+
+**Title:** How Spendly thinks
+
+Include:
+
+* onboarding captures income, goals, weakness areas, and spending habits
+* spending behavior is analyzed using real transaction data
+* the ASA engine generates budgets, predictions, alerts, and coaching insights
+* reports track habits, streaks, and recurring patterns
+
+Add a short technical line:
+“It is not rule-based only — it adapts using user behavior and financial context.”
+
+Look:
+
+* central diagram or layered system view
+* show three inputs feeding one intelligence engine:
+  onboarding data, transactions, budgets
+* outputs: alerts, predictions, coaching, reports
+* use a premium architecture-style visual
+
+### Slide 5 — Key Features
+
+**Title:** What the user gets
+
+Include only the strongest features:
+
+* chatbot expense logging
+* budget tracking and warnings
+* habit streaks and savings goals
+* monthly summaries and insights
+* AI coaching based on real behavior
+
+Make the benefits outcome-focused:
+
+* faster logging
+* better discipline
+* clearer spending awareness
+* smarter financial habits
+
+Look:
+
+* 4 or 5 feature cards
+* each card with a small icon, a title, and one short benefit line
+* use rounded cards, subtle shadows, and neat spacing
+* should feel like a premium app store / product launch slide
+
+### Slide 6 — Tech Stack / Architecture
+
+**Title:** Built for speed and scale
+
+Include:
+
+* React Native with Expo for frontend
+* Node.js + Express backend
+* Drizzle ORM with Neon PostgreSQL
+* Groq for AI responses
+* JWT authentication
+
+Also mention:
+
+* modular backend structure
+* clean data flow between app, API, database, and AI engine
+
+Look:
+
+* architecture diagram or tech stack grid
+* separate frontend, backend, database, AI layers
+* keep it neat and engineering-focused
+* use icons/logos, but keep them aligned and minimal
+
+### Slide 7 — Impact / Closing
+
+**Title:** Why Spendly matters
+
+Include:
+
+* helps users spend consciously
+* improves financial discipline through feedback loops
+* turns expense tracking into behavior change
+* scales as a smart personal finance companion
+
+Closing line:
+“Spendly does not just record money — it changes how people spend.”
+
+Look:
+
+* strongest ending slide
+* one bold statement in the center
+* elegant visual of progress, growth, or a before/after comparison
+* very clean and memorable
+
+### Design rules for the whole deck
+
+* keep every slide concise
+* no dense paragraphs
+* no overcrowded diagrams
+* no academic tone
+* no generic AI buzzwords
+* use real product language
+* emphasize clarity, sophistication, and impact
+* make the deck feel presentation-ready in under 60 seconds of speaking
+
+### Final output expectation
+
+Generate the deck content in a way that is ready for a startup pitch or technical interview:
+
+* sharp
+* compact
+* visually premium
+* memorable
+* persuasive
+* easy to present
