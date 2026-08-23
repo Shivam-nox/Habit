@@ -224,8 +224,8 @@ export default function RecurringPaymentModal({ visible, onClose }: RecurringPay
               </TouchableOpacity>
             </FormRow>
 
-            {showStartPicker && <DateTimePicker value={startDate} mode="date" display={Platform.OS === 'ios' ? 'spinner' : 'default'} onChange={onStartChange} />}
-            {showEndPicker && <DateTimePicker value={endDate || new Date()} mode="date" display={Platform.OS === 'ios' ? 'spinner' : 'default'} onChange={onEndChange} />}
+            {showStartPicker && <DateTimePicker value={startDate} mode="date" display={Platform.OS === 'ios' ? 'spinner' : 'default'} onChange={onStartChange} minimumDate={new Date()} />}
+            {showEndPicker && <DateTimePicker value={endDate || startDate} mode="date" display={Platform.OS === 'ios' ? 'spinner' : 'default'} onChange={onEndChange} minimumDate={startDate} />}
             
             <View style={{ height: 60 }} />
           </ScrollView>

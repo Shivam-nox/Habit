@@ -11,6 +11,12 @@ import * as Haptics from 'expo-haptics';
 import { useApi } from '../../services/api';
 import { useRouter } from 'expo-router';
 
+// Import modals
+import NotificationsModal from '../../components/NotificationsModal';
+import GoalModal from '../../components/GoalModal';
+import RecurringModal from '../../components/RecurringModal'; 
+import TransactionModal from '../../components/TransactionModal';
+
 // ─── MINIMAL PALETTE ─────────────────────────────────
 const C = {
   brand: '#2E7D6E',
@@ -24,9 +30,27 @@ const C = {
   fill: '#F5F5F5',
 };
 
+const ITEMS_PER_PAGE = 8;
+
 const fmt = (n: number) => `₹${(n || 0).toLocaleString('en-IN')}`;
 
-// ─── ANIMATED NUMBER ──────────────────────────────
+// Helper: Safely parse local dates without timezone shifting
+const formatRelativeDate = (dateString: string) => {
+  if (!dateString) return 'Unknown Date';
+  
+  const [year, month, day] = dateString.split('-');
+  const d = new Date(Number(year), Number(month) - 1, Number(day));
+  const today = new Date();
+  
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  if (d.toDateString() === today.toDateString()) return 'Today';
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+};
+
 const AnimatedAmount = ({ value, style }: { value: number; style?: any }) => {
   const [displayed, setDisplayed] = useState(0);
   useEffect(() => {
@@ -43,17 +67,7 @@ const AnimatedAmount = ({ value, style }: { value: number; style?: any }) => {
   return <Text style={style}>{fmt(displayed)}</Text>;
 };
 
-// ─── QUICK ACTION ──────────────────────────────────
-const QuickChip = ({ icon, label, onPress }: any) => (
-  <TouchableOpacity style={styles.chip} onPress={() => { Haptics.selectionAsync(); onPress(); }} activeOpacity={0.6}>
-    <View style={styles.chipIconWrap}>
-      <MaterialCommunityIcons name={icon} size={20} color={C.brand} />
-    </View>
-    <Text style={styles.chipLabel}>{label}</Text>
-  </TouchableOpacity>
-);
-
-type ListTab = 'History' | 'Recurring' | 'Goals' | 'Alerts';
+type ListTab = 'History' | 'Recurring' | 'Goals';
 
 export default function DashboardScreen() {
   const api = useApi();
@@ -62,6 +76,15 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<ListTab>('History');
+  
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Modal states
+  const [isNotifModalVisible, setNotifModalVisible] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<any>(null);
+  const [selectedRecurring, setSelectedRecurring] = useState<any>(null); 
+  const [selectedTransaction, setSelectedTransaction] = useState<any>(null); 
+
   const [userName, setUserName] = useState('');
   const [analytics, setAnalytics] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -84,6 +107,7 @@ export default function DashboardScreen() {
     ]);
   };
 
+  // BUG FIX: Removed 'api' from dependency array to stop the infinite loop!
   const load = useCallback(async (isRefresh = false) => {
     try {
       const [profileRes, dashRes, txRes, recRes, goalRes, notifRes] = await Promise.all([
@@ -100,7 +124,7 @@ export default function DashboardScreen() {
       }
       if (dashRes?.data) setAnalytics(dashRes.data);
       setTransactions(txRes || []);
-      setRecurring(recRes || []);
+      setRecurring((recRes || []).filter((r: any) => r.isActive !== false));
       setGoals(goalRes || []);
       setNotifications(notifRes || []);
     } catch (e) {
@@ -109,9 +133,13 @@ export default function DashboardScreen() {
       setLoading(false);
       if (isRefresh) setRefreshing(false);
     }
-  }, [api]);
+  }, []); // <-- Empty array is critical here
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
 
   if (loading) {
     return (
@@ -121,8 +149,8 @@ export default function DashboardScreen() {
     );
   }
 
-  const a = analytics ?? { stats: { totalIncome: 0, totalExpense: 0 }, alerts: [] };
-  const redAlerts = (a.alerts || []).filter((x: any) => x.severity === 'red').length;
+  const a = analytics ?? { stats: { totalIncome: 0, totalExpense: 0 } };
+  const unreadCount = notifications.filter((n: any) => !n.isRead).length;
   const spentPct = a.stats.totalIncome > 0 ? (a.stats.totalExpense / a.stats.totalIncome) * 100 : 0;
   const isOverBudget = spentPct > 100;
 
@@ -130,64 +158,91 @@ export default function DashboardScreen() {
     let content;
 
     if (activeTab === 'Goals') {
+      const target = parseFloat(item.targetAmount || 0);
+      const current = parseFloat(item.currentAmount || item.savedAmount || 0);
+      const progress = target > 0 ? Math.min(100, (current / target) * 100) : 0;
+      const isCompleted = target > 0 && current >= target;
+      const dateText = item.desiredDate ? formatRelativeDate(item.desiredDate) : 'No target date';
+
       content = (
-        <View style={styles.recordCard}>
-          <View style={styles.iconBox}>
-            <MaterialCommunityIcons name="flag-outline" size={18} color={C.text} />
+        <TouchableOpacity 
+          style={[styles.recordCard, { flexDirection: 'column', alignItems: 'stretch' }]} 
+          activeOpacity={0.7}
+          onPress={() => { Haptics.selectionAsync(); setSelectedGoal(item); }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={styles.iconBox}>
+              <MaterialCommunityIcons name="flag-outline" size={18} color={C.text} />
+            </View>
+            <View style={styles.recordContent}>
+              <Text style={styles.recordTitle}>{item.name}</Text>
+              <Text style={styles.recordSubtext}>Target: {fmt(target)}</Text>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={styles.recordAmount}>{fmt(current)}</Text>
+              <Text style={styles.miniLabel}>SAVED</Text>
+            </View>
           </View>
-          <View style={styles.recordContent}>
-            <Text style={styles.recordTitle}>{item.name}</Text>
-            <Text style={styles.recordSubtext}>Target: {fmt(parseFloat(item.targetAmount))}</Text>
+          <View style={{ marginTop: 14 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: isCompleted ? C.success : C.brand }}>
+                  {progress.toFixed(0)}%
+                </Text>
+                {isCompleted && (
+                  <View style={styles.successTag}>
+                    <Text style={styles.successTagText}>COMPLETED</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={{ fontSize: 10, color: C.subtext, fontWeight: '500' }}>{dateText}</Text>
+            </View>
+            <View style={styles.goalProgressBarContainer}>
+              <View style={[styles.goalProgressBar, { width: `${progress}%`, backgroundColor: isCompleted ? C.success : C.brand }]} />
+            </View>
           </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.recordAmount}>{fmt(parseFloat(item.currentAmount || item.savedAmount || 0))}</Text>
-            <Text style={styles.miniLabel}>SAVED</Text>
-          </View>
-        </View>
+        </TouchableOpacity>
       );
     } else if (activeTab === 'Recurring') {
+      const nextDateText = item.nextDate ? formatRelativeDate(item.nextDate) : 'Unknown';
+
       content = (
-        <View style={styles.recordCard}>
+        <TouchableOpacity 
+          style={styles.recordCard}
+          activeOpacity={0.7}
+          onPress={() => { Haptics.selectionAsync(); setSelectedRecurring(item); }}
+        >
           <View style={styles.iconBox}>
             <MaterialCommunityIcons name="calendar-sync" size={18} color={C.text} />
           </View>
           <View style={styles.recordContent}>
             <Text style={styles.recordTitle}>{item.name || item.categoryName || 'Subscription'}</Text>
-            <Text style={styles.recordSubtext}>Next: {item.nextDate || item.nextBillingDate}</Text>
+            <Text style={styles.recordSubtext}>Due {nextDateText} • {item.frequency || item.interval}</Text>
           </View>
           <Text style={styles.recordAmount}>{fmt(parseFloat(item.amount))}</Text>
-        </View>
-      );
-    } else if (activeTab === 'Alerts') {
-      content = (
-        <View style={styles.recordCard}>
-          <View style={styles.iconBox}>
-            <MaterialCommunityIcons name="bell-outline" size={18} color={C.text} />
-          </View>
-          <View style={styles.recordContent}>
-            <Text style={styles.recordTitle}>{item.title}</Text>
-            <Text style={styles.recordSubtext}>{item.message}</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.miniLabel}>{new Date(item.createdAt).toLocaleDateString()}</Text>
-          </View>
-        </View>
+        </TouchableOpacity>
       );
     } else {
       const isIncome = item.type === 'income';
+      const formattedDate = formatRelativeDate(item.date); 
+
       content = (
-        <View style={styles.recordCard}>
+        <TouchableOpacity 
+          style={styles.recordCard}
+          activeOpacity={0.7}
+          onPress={() => { Haptics.selectionAsync(); setSelectedTransaction(item); }}
+        >
           <View style={styles.iconBox}>
             <Ionicons name={item.categoryIcon as any || 'receipt-outline'} size={18} color={C.text} />
           </View>
           <View style={styles.recordContent}>
             <Text style={styles.recordTitle}>{item.categoryName || 'Transaction'}</Text>
-            <Text style={styles.recordSubtext}>{item.date}</Text>
+            <Text style={styles.recordSubtext}>{formattedDate}</Text>
           </View>
           <Text style={[styles.recordAmount, { color: isIncome ? C.success : C.text }]}>
             {isIncome ? '+' : ''}{fmt(parseFloat(item.amount))}
           </Text>
-        </View>
+        </TouchableOpacity>
       );
     }
 
@@ -203,7 +258,40 @@ export default function DashboardScreen() {
     );
   };
 
-  const currentListData = activeTab === 'History' ? transactions : activeTab === 'Recurring' ? recurring : activeTab === 'Goals' ? goals : notifications;
+  const handleAllocateGoal = async (goalId: string, amount: string) => {
+    await api.allocateGoalProgress(goalId, Number(amount)); 
+    await load(true); 
+  };
+
+  const handleProcessRecurring = async (recurringId: string) => {
+    await api.processRecurring(recurringId);
+    await load(true);
+  };
+
+  const handleCancelRecurring = async (recurringId: string) => {
+    await api.cancelRecurring(recurringId);
+    await load(true);
+  };
+
+  const handleUpdateRecurringDate = async (recurringId: string, newDate: string) => {
+    await api.updateRecurringDate(recurringId, newDate);
+    await load(true);
+  };
+
+  const handleUpdateTransaction = async (id: string, data: any) => {
+    await api.updateTransaction(id, data);
+    await load(true);
+  };
+
+  const handleDeleteTransaction = async (id: string) => {
+    await api.deleteTransaction(id);
+    await load(true);
+  };
+
+  // Pagination Logic
+  const currentListData = activeTab === 'History' ? transactions : activeTab === 'Recurring' ? recurring : goals;
+  const totalPages = Math.ceil(currentListData.length / ITEMS_PER_PAGE);
+  const paginatedData = currentListData.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const todayFormatted = new Date().toLocaleDateString('en-IN', {
     weekday: 'long', day: 'numeric', month: 'long'
@@ -223,14 +311,20 @@ export default function DashboardScreen() {
             <Text style={styles.month}>{todayFormatted}</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <TouchableOpacity style={styles.iconBtn} onPress={() => alert('Alerts screen coming soon!')} activeOpacity={0.6}>
+            {/* Open Notifications Modal */}
+            <TouchableOpacity 
+              style={styles.iconBtn} 
+              onPress={() => { Haptics.selectionAsync(); setNotifModalVisible(true); }} 
+              activeOpacity={0.6}
+            >
               <Ionicons name="notifications-outline" size={20} color={C.text} />
-              {redAlerts > 0 && (
+              {unreadCount > 0 && (
                 <View style={styles.alertDot}>
-                  <Text style={styles.alertDotText}>{redAlerts}</Text>
+                  <Text style={styles.alertDotText}>{unreadCount}</Text>
                 </View>
               )}
             </TouchableOpacity>
+
             <TouchableOpacity style={styles.iconBtn} onPress={handleLogout} activeOpacity={0.6}>
               <Ionicons name="log-out-outline" size={20} color={C.red} />
             </TouchableOpacity>
@@ -252,16 +346,10 @@ export default function DashboardScreen() {
           </View>
         </MotiView>
 
-        {/* Quick actions */}
-        <View style={styles.chipsRow}>
-          <QuickChip icon="robot-outline" label="Ask Duo" onPress={() => router.push('/coach')} />
-          <QuickChip icon="chart-donut" label="Charts" onPress={() => router.push('/charts')} />
-        </View>
-
         {/* List */}
         <Text style={styles.sectionTitle}>Your records</Text>
         <View style={styles.navToggle}>
-          {(['History', 'Recurring', 'Goals', 'Alerts'] as ListTab[]).map((tab) => (
+          {(['History', 'Recurring', 'Goals'] as ListTab[]).map((tab) => (
             <TouchableOpacity
               key={tab}
               activeOpacity={0.6}
@@ -274,8 +362,8 @@ export default function DashboardScreen() {
         </View>
 
         <View style={styles.listContainer}>
-          {currentListData.length > 0 ? (
-            currentListData.slice(0, 10).map((item, index) => renderListItem(item, index))
+          {paginatedData.length > 0 ? (
+            paginatedData.map((item, index) => renderListItem(item, index))
           ) : (
             <View style={styles.emptyState}>
               <Feather name="inbox" size={26} color={C.border} style={{ marginBottom: 8 }} />
@@ -284,8 +372,65 @@ export default function DashboardScreen() {
           )}
         </View>
 
+        {/* Numeric Pagination Buttons */}
+        {totalPages > 1 && (
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.paginationContainer}
+          >
+            {Array.from({ length: totalPages }).map((_, i) => {
+              const pageNum = i + 1;
+              const isActive = currentPage === pageNum;
+              return (
+                <TouchableOpacity
+                  key={pageNum}
+                  onPress={() => { Haptics.selectionAsync(); setCurrentPage(pageNum); }}
+                  style={[styles.pageBtn, isActive && styles.pageBtnActive]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.pageBtnText, isActive && styles.pageBtnTextActive]}>
+                    {pageNum}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
+
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Modals */}
+      <NotificationsModal 
+        visible={isNotifModalVisible} 
+        onClose={() => setNotifModalVisible(false)} 
+        notifications={notifications.slice(0, 5)} 
+      />
+
+      <GoalModal 
+        visible={!!selectedGoal} 
+        goal={selectedGoal} 
+        onClose={() => setSelectedGoal(null)} 
+        onAllocate={handleAllocateGoal} 
+      />
+
+      <RecurringModal
+        visible={!!selectedRecurring}
+        recurring={selectedRecurring}
+        onClose={() => setSelectedRecurring(null)}
+        onProcess={handleProcessRecurring}
+        onCancel={handleCancelRecurring}
+        onUpdateDate={handleUpdateRecurringDate} 
+      />
+
+      <TransactionModal
+        visible={!!selectedTransaction}
+        transaction={selectedTransaction}
+        onClose={() => setSelectedTransaction(null)}
+        onUpdate={handleUpdateTransaction}
+        onDelete={handleDeleteTransaction}
+      />
     </SafeAreaView>
   );
 }
@@ -294,11 +439,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   scroll: { paddingHorizontal: 20, paddingBottom: 20 },
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg },
-
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, paddingBottom: 20 },
   greeting: { fontSize: 22, fontWeight: '700', color: C.text, letterSpacing: -0.4 },
   month: { fontSize: 13, color: C.subtext, marginTop: 3 },
-
   iconBtn: {
     width: 38, height: 38, borderRadius: 19,
     backgroundColor: C.surface, borderWidth: 1, borderColor: C.border,
@@ -322,11 +465,6 @@ const styles = StyleSheet.create({
   heroFooter: { flexDirection: 'row', justifyContent: 'space-between' },
   heroSubtext: { fontSize: 12, color: C.subtext },
 
-  chipsRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
-  chip: { flex: 1, alignItems: 'center', gap: 6, backgroundColor: C.surface, paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: C.border },
-  chipIconWrap: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: C.fill },
-  chipLabel: { fontSize: 12, fontWeight: '600', color: C.text },
-
   sectionTitle: { fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 12 },
 
   navToggle: { flexDirection: 'row', backgroundColor: C.fill, borderRadius: 12, padding: 3, marginBottom: 14 },
@@ -344,10 +482,21 @@ const styles = StyleSheet.create({
   iconBox: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12, backgroundColor: C.fill },
   recordContent: { flex: 1 },
   recordTitle: { fontSize: 14, fontWeight: '600', color: C.text, marginBottom: 2 },
-  recordSubtext: { fontSize: 12, color: C.subtext },
+  recordSubtext: { fontSize: 12, color: C.subtext, textTransform: 'capitalize' },
   recordAmount: { fontSize: 14, fontWeight: '700', color: C.text },
   miniLabel: { fontSize: 9, color: C.subtext, fontWeight: '600', letterSpacing: 0.3, marginTop: 2 },
 
+  goalProgressBarContainer: { height: 4, backgroundColor: C.border, borderRadius: 2, overflow: 'hidden' },
+  goalProgressBar: { height: '100%', backgroundColor: C.brand, borderRadius: 2 },
+  successTag: { backgroundColor: '#DCFCE7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  successTagText: { color: C.success, fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
+
   emptyState: { padding: 32, alignItems: 'center', justifyContent: 'center' },
-  emptyText: { fontSize: 13, color: C.subtext, fontWeight: '500' }
+  emptyText: { fontSize: 13, color: C.subtext, fontWeight: '500' },
+  
+  paginationContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, gap: 8, minWidth: '100%' },
+  pageBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
+  pageBtnActive: { backgroundColor: C.text, borderColor: C.text },
+  pageBtnText: { fontSize: 14, fontWeight: '600', color: C.subtext },
+  pageBtnTextActive: { color: C.surface }
 });

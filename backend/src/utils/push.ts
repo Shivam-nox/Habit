@@ -1,6 +1,4 @@
 import { Expo, ExpoPushMessage } from 'expo-server-sdk';
-import { db } from '../db';
-import { appNotifications } from '../db/schema';
 
 // Create a new Expo SDK client
 // optionally providing an access token if you have enabled push security
@@ -13,16 +11,6 @@ export const sendPushNotification = async (
   body: string,
   data: Record<string, any> = {}
 ) => {
-  try {
-    await db.insert(appNotifications).values({
-      userId,
-      title,
-      message: body,
-    });
-  } catch (dbError) {
-    console.error("Failed to save notification to DB:", dbError);
-  }
-
   if (!pushToken) {
     console.log("No push token available, skipping notification.");
     return;

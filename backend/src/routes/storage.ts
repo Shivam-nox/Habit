@@ -124,6 +124,64 @@ export const Storage = {
     return newConfig;
   },
   
+
+  processRecurringPayment: async (recurringId: string, userId: string) => {
+  // 1. Find the recurring config
+  const config = await db.query.recurringConfigs.findFirst({
+    where: and(eq(recurringConfigs.id, recurringId), eq(recurringConfigs.userId, userId))
+  });
+
+  if (!config) throw new Error("Recurring payment not found");
+
+  // 2. Add it as a real transaction
+  const [newTx] = await db.insert(transactions).values({
+    userId,
+    amount: config.amount,
+    type: config.type,
+    categoryId: config.categoryId,
+    date: new Date().toISOString(),
+    source: 'system',
+    isRecurring: true,
+    note: `Auto-processed recurring payment`
+  }).returning();
+
+  // 3. Calculate the new 'Next Date'
+  const currentNext = new Date(config.nextDate);
+  if (config.frequency === 'daily') currentNext.setDate(currentNext.getDate() + 1);
+  else if (config.frequency === 'weekly') currentNext.setDate(currentNext.getDate() + 7);
+  else if (config.frequency === 'monthly') currentNext.setMonth(currentNext.getMonth() + 1);
+  else if (config.frequency === 'yearly') currentNext.setFullYear(currentNext.getFullYear() + 1);
+
+  // 4. Update the recurring config
+  const [updatedConfig] = await db.update(recurringConfigs)
+    .set({ nextDate: currentNext.toISOString().split('T')[0] })
+    .where(eq(recurringConfigs.id, recurringId))
+    .returning();
+
+  return { transaction: newTx, config: updatedConfig };
+},
+
+cancelRecurringPayment: async (recurringId: string, userId: string) => {
+  const [updated] = await db.update(recurringConfigs)
+    .set({ isActive: false })
+    .where(and(eq(recurringConfigs.id, recurringId), eq(recurringConfigs.userId, userId)))
+    .returning();
+    
+  if (!updated) throw new Error("Recurring payment not found");
+  return updated;
+},
+
+updateRecurringDate: async (recurringId: string, userId: string, nextDate: string) => {
+  const [updated] = await db.update(recurringConfigs)
+    .set({ nextDate })
+    .where(and(eq(recurringConfigs.id, recurringId), eq(recurringConfigs.userId, userId)))
+    .returning();
+    
+  if (!updated) throw new Error("Recurring payment not found");
+  return updated;
+},
+
+
   // --- AI Context & Chat History ---
   getRecentLogsForAI: async (userId: string, daysBack: number = 30) => {
     const cutoffDate = new Date();
@@ -251,6 +309,32 @@ export const Storage = {
       return newTx;
     });
   },
+
+
+  updateTransaction: async (transactionId: string, userId: string, updateData: any) => {
+  const [updated] = await db.update(transactions)
+    .set({
+      amount: updateData.amount ? String(updateData.amount) : undefined,
+      note: updateData.note,
+      date: updateData.date,
+      // Add any other fields you want to be editable
+    })
+    .where(and(eq(transactions.id, transactionId), eq(transactions.userId, userId)))
+    .returning();
+
+  if (!updated) throw new Error("Transaction not found or unauthorized");
+  return updated;
+},
+
+deleteTransaction: async (transactionId: string, userId: string) => {
+  const [deleted] = await db.delete(transactions)
+    .where(and(eq(transactions.id, transactionId), eq(transactions.userId, userId)))
+    .returning();
+
+  if (!deleted) throw new Error("Transaction not found or unauthorized");
+  return deleted;
+},
+
 
   // --- ADD THIS NEW METHOD ---
   getDashboard: async (userId: string) => {

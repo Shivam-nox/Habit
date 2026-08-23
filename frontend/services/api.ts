@@ -250,6 +250,23 @@ export const useApi = () => {
       return handleResponse(response);
     },
 
+    updateTransaction: async (id: string, transactionData: any) => {
+  const response = await fetch(`${BASE_URL}/transactions/${id}`, {
+    method: 'PUT',
+    headers: await getHeaders(),
+    body: JSON.stringify(transactionData),
+  });
+  return handleResponse(response);
+},
+
+deleteTransaction: async (id: string) => {
+  const response = await fetch(`${BASE_URL}/transactions/${id}`, {
+    method: 'DELETE',
+    headers: await getHeaders(),
+  });
+  return handleResponse(response);
+},
+
     // ── RECURRING ────────────────────────────────
     getRecurringConfigs: async () => {
       const response = await fetch(`${BASE_URL}/recurring`, {
@@ -266,6 +283,34 @@ export const useApi = () => {
       });
       return handleResponse(response);
     },
+
+
+    updateRecurringDate: async (id: string, nextDate: string) => {
+  const response = await fetch(`${BASE_URL}/recurring/${id}/update-date`, {
+    method: 'POST',
+    headers: await getHeaders(),
+    body: JSON.stringify({ nextDate }),
+  });
+  return handleResponse(response);
+},
+
+
+    // ── RECURRING ACTIONS ────────────────────────────
+processRecurring: async (id: string) => {
+  const response = await fetch(`${BASE_URL}/recurring/${id}/process`, {
+    method: 'POST',
+    headers: await getHeaders(),
+  });
+  return handleResponse(response);
+},
+
+cancelRecurring: async (id: string) => {
+  const response = await fetch(`${BASE_URL}/recurring/${id}/cancel`, {
+    method: 'POST',
+    headers: await getHeaders(),
+  });
+  return handleResponse(response);
+},
 
     // ── GOALS ────────────────────────────────────
     getGoals: async () => {

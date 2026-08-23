@@ -150,19 +150,14 @@ router.get('/transactions', requireAuth, async (req: express.Request, res: expre
 });
 
 router.post('/transactions', requireAuth, async (req: express.Request, res: express.Response) => {
-  console.log("🚀 [DEBUG] /transactions route hit!");
-  console.log("📦 [DEBUG] Request Body:", req.body);
-  
   const userId = (req as any).userId;
-  console.log("👤 [DEBUG] User ID:", userId);
-
+  
   const { 
     amount, type, categoryName, note, date, 
     intent, paymentMode, debtType, debtContact 
   } = req.body;
 
   if (!amount || !type) {
-    console.log("❌ [DEBUG] Validation Failed: Missing amount or type");
     res.status(400).json({ error: 'Missing required fields (amount, type)' });
     return;
   }
@@ -170,21 +165,17 @@ router.post('/transactions', requireAuth, async (req: express.Request, res: expr
   try {
     let realCategoryId = null;
     if (categoryName) {
-      console.log(`🔍 [DEBUG] Looking up category: ${categoryName}`);
       const categoriesList = await Storage.getCategories(userId, type);
       const matchedCategory = categoriesList.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
 
       if (matchedCategory) {
         realCategoryId = matchedCategory.id;
-        console.log(`✅ [DEBUG] Found Category ID: ${realCategoryId}`);
       } else {
-        console.log(`❌ [DEBUG] Category '${categoryName}' not found in database.`);
         res.status(400).json({ error: `Category '${categoryName}' not found.` });
         return;
       }
     }
 
-    console.log("💾 [DEBUG] Attempting to save transaction...");
     const tx = await Storage.addTransaction({
       userId,
       amount: String(amount), 
@@ -198,45 +189,74 @@ router.post('/transactions', requireAuth, async (req: express.Request, res: expr
       date: date || new Date().toISOString(),
       source: 'manual',
     });
-    console.log("✅ [DEBUG] Transaction saved successfully:", tx.id);
 
     // --- NOTIFICATION LOGIC ---
-    const notifTitle = "Record Added 🚀";
-    const notifMessage = `Successfully added ${type} of ${amount}`;
+    // Capitalize the first letter (e.g., 'expense' -> 'Expense')
+    const formattedType = type.charAt(0).toUpperCase() + type.slice(1);
+    
+    // Create a dynamic title and message
+    const notifTitle = `${formattedType} Logged 📝`;
+    const notifMessage = categoryName 
+      ? `${formattedType} of ₹${amount} saved for ${categoryName}.`
+      : `${formattedType} of ₹${amount} successfully logged.`;
 
-    console.log("🔔 [DEBUG] Fetching user for push token...");
     const user = await Storage.getUserById(userId);
     
+    // 1. Send device push notification
     if (user?.expoPushToken) {
-      console.log("📱 [DEBUG] Sending Expo Push to:", user.expoPushToken);
       sendPushNotification(
         userId,
         user.expoPushToken,
         notifTitle,
         notifMessage
       ).catch(e => console.error("❌ [DEBUG] Push Notification Error:", e));
-    } else {
-      console.log("⚠️ [DEBUG] No expoPushToken found for user");
-    }
+    } 
 
-    console.log("📥 [DEBUG] Saving to appNotifications table...");
+    // 2. Save in-app notification to the database
     try {
       await Storage.createNotification({
         userId,
         title: notifTitle,
         message: notifMessage
       });
-      console.log("✅ [DEBUG] App Notification saved");
     } catch (notifError) {
       console.error("❌ [DEBUG] Failed to save app notification:", notifError);
     }
     // --------------------------
 
-    console.log("🏁 [DEBUG] Sending success response to frontend");
     res.status(201).json(tx);
   } catch (e) {
-    console.error("❌ [DEBUG] FATAL Transaction Route Error:", e);
+    console.error("❌ [DEBUG] Transaction Route Error:", e);
     res.status(500).json({ error: 'Transaction failed to save' });
+  }
+});
+
+// --- UPDATE TRANSACTION ---
+router.put('/transactions/:id', requireAuth, async (req: express.Request, res: express.Response) => {
+  const userId = (req as any).userId as string;
+  const transactionId = req.params.id as string;
+  const updateData = req.body;
+
+  try {
+    const updated = await Storage.updateTransaction(transactionId, userId, updateData);
+    res.json({ success: true, data: updated });
+  } catch (e: any) {
+    console.error("❌ Update Transaction Error:", e);
+    res.status(500).json({ error: e.message || 'Failed to update transaction' });
+  }
+});
+
+// --- DELETE TRANSACTION ---
+router.delete('/transactions/:id', requireAuth, async (req: express.Request, res: express.Response) => {
+  const userId = (req as any).userId as string;
+  const transactionId = req.params.id as string;
+
+  try {
+    await Storage.deleteTransaction(transactionId, userId);
+    res.json({ success: true, message: 'Transaction deleted' });
+  } catch (e: any) {
+    console.error("❌ Delete Transaction Error:", e);
+    res.status(500).json({ error: e.message || 'Failed to delete transaction' });
   }
 });
 
@@ -284,21 +304,106 @@ router.post('/recurring', requireAuth, async (req: express.Request, res: express
       isActive: true,
     });
     
-    // Trigger push notification
+    // --- NOTIFICATION LOGIC ---
+    const formattedType = type.charAt(0).toUpperCase() + type.slice(1);
+    
+    const notifTitle = "Recurring Payment Set 📅";
+    const notifMessage = `Your ${formattedType.toLowerCase()} of ₹${amount} is set to repeat ${actualFrequency}.`;
+
     const user = await Storage.getUserById(userId);
+    
+    // 1. Send device push notification
     if (user?.expoPushToken) {
-      await sendPushNotification(
+      sendPushNotification(
         userId,
         user.expoPushToken,
-        "Recurring Payment Set 📅",
-        `Successfully set up ${type} of ${amount} for ${actualFrequency}`
-      );
+        notifTitle,
+        notifMessage
+      ).catch(e => console.error("❌ [DEBUG] Push Notification Error:", e));
     }
+    
+    // 2. Save in-app notification to the database
+    try {
+      await Storage.createNotification({
+        userId,
+        title: notifTitle,
+        message: notifMessage
+      });
+    } catch (notifError) {
+      console.error("❌ [DEBUG] Failed to save app notification:", notifError);
+    }
+    // --------------------------
     
     res.status(201).json(newRecurring);
   } catch (e) {
     console.error("Recurring Route Error:", e);
     res.status(500).json({ error: 'Failed to create recurring payment' });
+  }
+});
+
+
+// --- PROCESS RECURRING PAYMENT ---
+router.post('/recurring/:id/process', requireAuth, async (req: express.Request, res: express.Response) => {
+  const userId = (req as any).userId as string;
+  const recurringId = req.params.id as string;
+
+  try {
+    const result = await Storage.processRecurringPayment(recurringId, userId);
+    
+    // --- NOTIFICATION LOGIC ---
+    const notifTitle = "Recurring Payment Processed ✅";
+    const notifMessage = `Successfully paid ₹${result.transaction.amount} for your subscription.`;
+    const user = await Storage.getUserById(userId);
+    
+    if (user?.expoPushToken) {
+      sendPushNotification(userId, user.expoPushToken, notifTitle, notifMessage).catch(e => console.error(e));
+    }
+    await Storage.createNotification({ userId, title: notifTitle, message: notifMessage }).catch(e => console.error(e));
+    
+    res.json({ success: true, data: result });
+  } catch (e: any) {
+    console.error("❌ Process Recurring Error:", e);
+    res.status(500).json({ error: e.message || 'Failed to process recurring payment' });
+  }
+});
+
+// --- CANCEL RECURRING PAYMENT ---
+router.post('/recurring/:id/cancel', requireAuth, async (req: express.Request, res: express.Response) => {
+  const userId = (req as any).userId as string;
+  const recurringId = req.params.id as string;
+
+  try {
+    await Storage.cancelRecurringPayment(recurringId, userId);
+    
+    // --- NOTIFICATION LOGIC ---
+    const notifTitle = "Subscription Stopped 🚫";
+    const notifMessage = `Your recurring payment has been successfully cancelled.`;
+    const user = await Storage.getUserById(userId);
+    
+    if (user?.expoPushToken) {
+      sendPushNotification(userId, user.expoPushToken, notifTitle, notifMessage).catch(e => console.error(e));
+    }
+    await Storage.createNotification({ userId, title: notifTitle, message: notifMessage }).catch(e => console.error(e));
+    
+    res.json({ success: true });
+  } catch (e: any) {
+    console.error("❌ Cancel Recurring Error:", e);
+    res.status(500).json({ error: e.message || 'Failed to cancel recurring payment' });
+  }
+});
+
+// --- MANUALLY UPDATE RECURRING DATE ---
+router.post('/recurring/:id/update-date', requireAuth, async (req: express.Request, res: express.Response) => {
+  const userId = (req as any).userId as string;
+  const recurringId = req.params.id as string;
+  const { nextDate } = req.body;
+
+  try {
+    const updated = await Storage.updateRecurringDate(recurringId, userId, nextDate);
+    res.json({ success: true, data: updated });
+  } catch (e: any) {
+    console.error("❌ Update Date Error:", e);
+    res.status(500).json({ error: e.message || 'Failed to update date' });
   }
 });
 
@@ -329,19 +434,37 @@ router.post('/goals', requireAuth, async (req: express.Request, res: express.Res
       desiredDate: desiredDate || null,
     });
     
-    // Trigger push notification
+    // --- NOTIFICATION LOGIC ---
+    const notifTitle = "Goal Created 🎯";
+    const notifMessage = `Goal "${name}" set for ₹${targetAmount}. Let's start saving!`;
+
     const user = await Storage.getUserById(userId);
+    
+    // 1. Send device push notification
     if (user?.expoPushToken) {
-      await sendPushNotification(
+      sendPushNotification(
         userId,
         user.expoPushToken,
-        "Goal Created 🎯",
-        `Your goal "${name}" for ${targetAmount} has been created.`
-      );
+        notifTitle,
+        notifMessage
+      ).catch(e => console.error("❌ [DEBUG] Push Notification Error:", e));
     }
+    
+    // 2. Save in-app notification to the database
+    try {
+      await Storage.createNotification({
+        userId,
+        title: notifTitle,
+        message: notifMessage
+      });
+    } catch (notifError) {
+      console.error("❌ [DEBUG] Failed to save app notification:", notifError);
+    }
+    // --------------------------
     
     res.status(201).json(newGoal);
   } catch (e) {
+    console.error("❌ [DEBUG] Goal Route Error:", e);
     res.status(500).json({ error: 'Failed to create goal' });
   }
 });
@@ -354,16 +477,33 @@ router.post('/goals/:id/allocate', requireAuth, async (req: express.Request, res
   try {
     const updatedGoal = await Storage.updateGoalProgress(id, userId, Number(amount));
     
-    // Trigger push notification
+    // --- NOTIFICATION LOGIC ---
+    const notifTitle = "Funds Allocated 💰";
+    const notifMessage = `Successfully allocated ₹${amount} towards your goal "${updatedGoal.name || 'Goal'}".`;
+
     const user = await Storage.getUserById(userId);
+    
+    // 1. Send device push notification
     if (user?.expoPushToken) {
-      await sendPushNotification(
+      sendPushNotification(
         userId,
         user.expoPushToken,
-        "Funds Allocated 💰",
-        `You've allocated ${amount} towards a goal.`
-      );
+        notifTitle,
+        notifMessage
+      ).catch(e => console.error("❌ [DEBUG] Push Notification Error:", e));
     }
+
+    // 2. Save in-app notification to the database
+    try {
+      await Storage.createNotification({
+        userId,
+        title: notifTitle,
+        message: notifMessage
+      });
+    } catch (notifError) {
+      console.error("❌ [DEBUG] Failed to save app notification:", notifError);
+    }
+    // --------------------------
     
     res.json(updatedGoal);
   } catch (e: any) {
