@@ -39,8 +39,12 @@ interface Props {
 export default function RecurringModal({ visible, recurring, onClose, onProcess, onCancel, onUpdateDate }: Props) {
   const [loadingType, setLoadingType] = useState<'process' | 'cancel' | 'date' | null>(null);
 
-  // Use the exact same pattern as TransactionModal.tsx
-  const [minDate] = useState(() => new Date());
+  // Use midnight today for minimum date to ensure consistent behavior across platforms
+  const [minDate] = useState(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
 
   const [dateValue, setDateValue] = useState(new Date());
   const [tempDate, setTempDate] = useState('');

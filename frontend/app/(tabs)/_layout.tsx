@@ -40,23 +40,26 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
+        tabBarActiveTintColor: COLORS.ink,
+        tabBarInactiveTintColor: COLORS.muted,
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '500', marginTop: -5 },
         tabBarStyle: {
           backgroundColor: COLORS.bg,
           borderTopWidth: 1,
           borderTopColor: COLORS.line,
-          height: Platform.OS === 'ios' ? 56 + insets.bottom : 80,
-          paddingBottom: Platform.OS === 'ios' ? insets.bottom : 15,
+          height: Platform.OS === 'ios' ? 70 + insets.bottom : 90,
+          paddingBottom: Platform.OS === 'ios' ? insets.bottom : 20,
           paddingTop: 10,
           elevation: 0,
           shadowOpacity: 0,
         },
       }}
     >
-      <Tabs.Screen name="records" options={{ tabBarIcon: ({ focused }) => <TabIcon name="list" focused={focused} /> }} />
-      <Tabs.Screen name="charts" options={{ tabBarIcon: ({ focused }) => <TabIcon name="pie-chart" focused={focused} /> }} />
-      <Tabs.Screen name="add" options={{ tabBarIcon: ({ focused }) => <TabIcon name="plus" focused={focused} /> }} />
-      <Tabs.Screen name="reports" options={{ tabBarIcon: ({ focused }) => <TabIcon name="file-text" focused={focused} /> }} />
-      <Tabs.Screen name="coach" options={{ tabBarIcon: ({ focused }) => <TabIcon name="message-circle" focused={focused} /> }} />
+      <Tabs.Screen name="records" options={{ tabBarLabel: 'Records', tabBarIcon: ({ focused }) => <TabIcon name="list" focused={focused} /> }} />
+      <Tabs.Screen name="add" options={{ tabBarLabel: 'Add', tabBarIcon: ({ focused }) => <TabIcon name="plus" focused={focused} /> }} />
+      <Tabs.Screen name="coach" options={{ tabBarLabel: 'Coach', tabBarIcon: ({ focused }) => <TabIcon name="message-circle" focused={focused} /> }} />
+      <Tabs.Screen name="charts" options={{ tabBarLabel: 'Charts', tabBarIcon: ({ focused }) => <TabIcon name="pie-chart" focused={focused} /> }} />
+      <Tabs.Screen name="reports" options={{ tabBarLabel: 'Reports', tabBarIcon: ({ focused }) => <TabIcon name="file-text" focused={focused} /> }} />
     </Tabs>
   );
 }

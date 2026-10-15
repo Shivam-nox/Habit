@@ -1,4 +1,8 @@
-import React, { useState, useRef } from 'react';
+// components/coach.tsx — full rewrite with:
+// Issue #8: Handle action/snapshot from chat response
+// Issue #17: Load chat history on mount
+// Issue #18: Show suggestion chips persistently after AI replies
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TextInput, FlatList,
   TouchableOpacity, KeyboardAvoidingView, Platform,
@@ -10,6 +14,7 @@ import * as Haptics from 'expo-haptics';
 import { MotiView, MotiText, AnimatePresence } from 'moti';
 import { Easing } from 'react-native-reanimated';
 import { useApi } from '../../services/api';
+import { useFocusEffect } from 'expo-router';
 
 // --- Minimal palette: one accent, everything else neutral ---
 const C = {
@@ -18,10 +23,13 @@ const C = {
   text: '#111827',
   muted: '#9CA3AF',
   border: '#EEEEEE',
-  accent: '#111827',   // near-black bubble for user (minimal, not colorful)
+  accent: '#111827',
   accentSoft: '#F0F4F3',
   brand: '#2E7D6E',
+  success: '#16A34A',
 };
+
+const fmt = (n: number) => `₹${(n || 0).toLocaleString('en-IN')}`;
 
 interface Message {
   id: string;
@@ -56,7 +64,6 @@ const TypingIndicator = () => (
   </MotiView>
 );
 
-// --- Message bubble: soft entrance, subtle press feedback, no dedicated avatar ---
 const Bubble = ({ item, isUser }: { item: Message; isUser: boolean }) => {
   const [pressed, setPressed] = useState(false);
   return (
@@ -82,7 +89,6 @@ const Bubble = ({ item, isUser }: { item: Message; isUser: boolean }) => {
   );
 };
 
-// --- Suggestion chip: tactile press scale ---
 const Suggestion = ({ title, icon, onPress, delay }: any) => {
   const [pressed, setPressed] = useState(false);
   return (
@@ -109,7 +115,6 @@ const Suggestion = ({ title, icon, onPress, delay }: any) => {
   );
 };
 
-// --- Lightweight markdown (bold only) ---
 const FormattedText = ({ text, isUser }: { text: string; isUser: boolean }) => {
   const parts = text.split(/(\*\*.*?\*\*)/g);
   const color = isUser ? C.surface : C.text;
@@ -128,6 +133,43 @@ const FormattedText = ({ text, isUser }: { text: string; isUser: boolean }) => {
   );
 };
 
+// Issue #8: Mini snapshot banner after AI replies with action
+const SnapshotBanner = ({ snapshot }: { snapshot: any }) => {
+  if (!snapshot) return null;
+  return (
+    <MotiView
+      from={{ opacity: 0, translateY: -4 }}
+      animate={{ opacity: 1, translateY: 0 }}
+      transition={{ type: 'timing', duration: 300 }}
+      style={styles.snapshotBanner}
+    >
+      <View style={styles.snapshotItem}>
+        <Text style={styles.snapshotLabel}>Spent</Text>
+        <Text style={styles.snapshotValue}>{fmt(snapshot.totalExpense || 0)}</Text>
+      </View>
+      <View style={styles.snapshotDivider} />
+      <View style={styles.snapshotItem}>
+        <Text style={styles.snapshotLabel}>Discipline</Text>
+        <Text style={[styles.snapshotValue, { color: (snapshot.disciplineScore || 0) >= 70 ? C.success : C.brand }]}>
+          {snapshot.disciplineScore || 0}%
+        </Text>
+      </View>
+      <View style={styles.snapshotDivider} />
+      <View style={styles.snapshotItem}>
+        <Text style={styles.snapshotLabel}>Savings rate</Text>
+        <Text style={styles.snapshotValue}>{Math.round(snapshot.savingsRate || 0)}%</Text>
+      </View>
+    </MotiView>
+  );
+};
+
+const SUGGESTION_CHIPS = [
+  { title: 'Analyze week', icon: 'chart-line' },
+  { title: 'Add lunch ₹200', icon: 'plus' },
+  { title: 'Saving tips', icon: 'lightbulb-outline' },
+  { title: 'Budget check', icon: 'wallet-outline' },
+];
+
 export default function ChatScreen() {
   const api = useApi();
   const [messages, setMessages] = useState<Message[]>([
@@ -137,7 +179,31 @@ export default function ChatScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
   const [sendPop, setSendPop] = useState(false);
+  const [snapshot, setSnapshot] = useState<any>(null);  // Issue #8
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+
+  // Issue #17 FIX: Load chat history on mount
+  const loadHistory = useCallback(async () => {
+    if (historyLoaded) return;
+    try {
+      const res = await (api as any).getChatHistory?.();
+      const history: any[] = Array.isArray(res) ? res : res?.data || [];
+      if (history.length > 0) {
+        const hydrated: Message[] = history.map((h: any, i: number) => ({
+          id: `history_${i}`,
+          text: h.message || h.content || '',
+          sender: h.role === 'user' ? 'user' : 'ai',
+        }));
+        setMessages(hydrated);
+        setHistoryLoaded(true);
+      }
+    } catch {
+      // Silently ignore — fresh chat is fine
+    }
+  }, [api, historyLoaded]);
+
+  useEffect(() => { loadHistory(); }, [loadHistory]);
 
   const sendMessage = async (text: string) => {
     if (!text.trim()) return;
@@ -151,11 +217,19 @@ export default function ChatScreen() {
 
     try {
       const response = await api.chatWithCoach(text);
+
       setMessages((prev) => [
         ...prev,
         { id: (Date.now() + 1).toString(), text: response.text, sender: 'ai' },
       ]);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // Issue #8 FIX: Handle action + snapshot from chat response
+      if (response.snapshot) {
+        setSnapshot(response.snapshot);
+      }
+      if (response.action === 'ADD_TX' && response.transaction) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -166,6 +240,10 @@ export default function ChatScreen() {
     }
   };
 
+  // Issue #18 FIX: Show chips after every AI reply, not just the opening message
+  const lastMessage = messages[messages.length - 1];
+  const showChips = !isLoading && lastMessage?.sender === 'ai';
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <KeyboardAvoidingView
@@ -174,7 +252,7 @@ export default function ChatScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
       >
         <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-          {/* Header — slim, no logo/avatar block, just a live status pulse */}
+          {/* Header */}
           <MotiView
             from={{ opacity: 0, translateY: -6 }}
             animate={{ opacity: 1, translateY: 0 }}
@@ -198,20 +276,8 @@ export default function ChatScreen() {
             <Text style={styles.headerSub}>Duo</Text>
           </MotiView>
 
-          {/* Suggestions — only before conversation starts */}
-          {messages.length === 1 && (
-            <View style={styles.suggestionsWrap}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 8, paddingHorizontal: 20 }}
-              >
-                <Suggestion title="Analyze week" icon="chart-line" onPress={sendMessage} delay={80} />
-                <Suggestion title="Add lunch ₹200" icon="plus" onPress={sendMessage} delay={160} />
-                <Suggestion title="Saving tips" icon="lightbulb-outline" onPress={sendMessage} delay={240} />
-              </ScrollView>
-            </View>
-          )}
+          {/* Issue #8: Snapshot banner (shown after AI transaction actions) */}
+          {snapshot && <SnapshotBanner snapshot={snapshot} />}
 
           {/* Messages */}
           <FlatList
@@ -228,6 +294,27 @@ export default function ChatScreen() {
             keyboardDismissMode="interactive"
             showsVerticalScrollIndicator={false}
           />
+
+          {/* Issue #18: Chips after every AI reply */}
+          {showChips && (
+            <View style={styles.suggestionsWrap}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 8, paddingHorizontal: 20 }}
+              >
+                {SUGGESTION_CHIPS.map((chip, i) => (
+                  <Suggestion
+                    key={chip.title}
+                    title={chip.title}
+                    icon={chip.icon}
+                    onPress={sendMessage}
+                    delay={i * 60}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+          )}
 
           {/* Input */}
           <View style={styles.inputOuter}>
@@ -291,7 +378,23 @@ const styles = StyleSheet.create({
   headerSub: { fontSize: 11, fontWeight: '500', color: C.muted },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.brand },
 
-  suggestionsWrap: { paddingVertical: 14 },
+  // Issue #8: Snapshot banner
+  snapshotBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    backgroundColor: C.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: C.border,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  snapshotItem: { alignItems: 'center' },
+  snapshotLabel: { fontSize: 10, color: C.muted, fontWeight: '600', textTransform: 'uppercase', marginBottom: 2 },
+  snapshotValue: { fontSize: 14, fontWeight: '700', color: C.text },
+  snapshotDivider: { width: 1, height: 28, backgroundColor: C.border },
+
+  suggestionsWrap: { paddingVertical: 10 },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',

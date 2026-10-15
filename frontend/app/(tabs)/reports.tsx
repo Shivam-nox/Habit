@@ -24,12 +24,20 @@ export default function ReportsScreen() {
   const api = useApi();
   const [isGenerating, setIsGenerating] = useState(false);
   const [reportData, setReportData] = useState<any>(null);
+  
+  const [targetDate, setTargetDate] = useState(new Date());
+
+  const getMonthStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  const displayMonth = targetDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+  const prevMonth = () => setTargetDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1));
+  const nextMonth = () => setTargetDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1));
 
   const handleGenerateReport = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setIsGenerating(true);
     try {
-      const res = await api.getReportData?.() || { data: null };
+      const res = await api.getReportData?.(getMonthStr(targetDate)) || { data: null };
       if (res.data) {
         setReportData(res.data);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -130,10 +138,20 @@ export default function ReportsScreen() {
           <Text style={styles.bannerTitle}>Monthly & budget report</Text>
           <Text style={styles.bannerSub}>Compile a clean summary of your spending and budget discipline.</Text>
 
+          <View style={styles.monthSelector}>
+            <TouchableOpacity onPress={prevMonth} style={styles.monthBtn}>
+              <Feather name="chevron-left" size={20} color={C.text} />
+            </TouchableOpacity>
+            <Text style={styles.monthLabel}>{displayMonth}</Text>
+            <TouchableOpacity onPress={nextMonth} style={styles.monthBtn}>
+              <Feather name="chevron-right" size={20} color={C.text} />
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity style={styles.generateBtn} onPress={handleGenerateReport} disabled={isGenerating} activeOpacity={0.7}>
             {isGenerating ? <ActivityIndicator size="small" color={C.surface} /> : (
               <>
-                <Text style={styles.generateBtnText}>Generate</Text>
+                <Text style={styles.generateBtnText}>Generate for {displayMonth}</Text>
                 <Feather name="arrow-right" size={15} color={C.surface} />
               </>
             )}
@@ -162,6 +180,21 @@ export default function ReportsScreen() {
                 </Text>
               </View>
             </View>
+
+            {reportData.monthlyReport.topCategories && reportData.monthlyReport.topCategories.length > 0 && (
+              <View style={styles.topCatsContainer}>
+                <Text style={styles.topCatsTitle}>Top Expenses</Text>
+                {reportData.monthlyReport.topCategories.map((c: any, i: number) => (
+                  <View key={i} style={styles.topCatRow}>
+                    <Text style={styles.topCatName}>{c.name}</Text>
+                    <View style={styles.topCatRight}>
+                      <Text style={styles.topCatTotal}>{fmt(c.total)}</Text>
+                      <Text style={styles.topCatPct}>{c.percent}%</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
           </MotiView>
         ) : (
           <View style={styles.emptyState}>
@@ -197,5 +230,15 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 11, color: C.subtext, fontWeight: '600', textTransform: 'uppercase', marginBottom: 4 },
   statValue: { fontSize: 17, fontWeight: '700', color: C.text },
   emptyState: { padding: 32, alignItems: 'center', marginTop: 12 },
-  emptyText: { fontSize: 13, color: C.subtext }
+  emptyText: { fontSize: 13, color: C.subtext },
+  monthSelector: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: C.fill, borderRadius: 12, paddingVertical: 8, paddingHorizontal: 12, marginBottom: 16 },
+  monthBtn: { padding: 8, backgroundColor: C.surface, borderRadius: 8, borderWidth: 1, borderColor: C.border },
+  monthLabel: { fontSize: 15, fontWeight: '600', color: C.text },
+  topCatsContainer: { marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderColor: C.border },
+  topCatsTitle: { fontSize: 13, fontWeight: '600', color: C.subtext, textTransform: 'uppercase', marginBottom: 12 },
+  topCatRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  topCatName: { fontSize: 14, color: C.text, fontWeight: '500' },
+  topCatRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  topCatTotal: { fontSize: 14, fontWeight: '600', color: C.text },
+  topCatPct: { fontSize: 12, color: C.subtext, width: 35, textAlign: 'right' }
 });

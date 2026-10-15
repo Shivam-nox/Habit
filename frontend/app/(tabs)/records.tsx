@@ -1,5 +1,6 @@
 // screens/DashboardScreen.tsx
 import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   RefreshControl, ActivityIndicator, Alert
@@ -136,6 +137,14 @@ export default function DashboardScreen() {
   }, []); // <-- Empty array is critical here
 
   useEffect(() => { load(); }, [load]);
+
+  // Issue #9 FIX: Reload data every time this tab gains focus
+  // (e.g., after adding a transaction in the Add tab)
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
   useEffect(() => {
     setCurrentPage(1);

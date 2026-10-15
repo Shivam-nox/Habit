@@ -320,7 +320,7 @@ cancelRecurring: async (id: string) => {
       return handleResponse(response);
     },
 
-    getReportData: async () => handleResponse(await fetch(BASE_URL + '/reports/generate', { headers: await getHeaders() })),
+
 
     createGoal: async (goalData: any) => {
       const response = await fetch(`${BASE_URL}/goals`, {
@@ -403,8 +403,9 @@ cancelRecurring: async (id: string) => {
       return handleResponse(response);
     },
 
-    getWeeklyReport: async () => {
-      const response = await fetch(`${BASE_URL}/weekly-report`, {
+    getReportData: async (month?: string) => {
+      const url = month ? `${BASE_URL}/reports/generate?month=${month}` : `${BASE_URL}/reports/generate`;
+      const response = await fetch(url, {
         headers: await getHeaders(),
       });
       return handleResponse(response);

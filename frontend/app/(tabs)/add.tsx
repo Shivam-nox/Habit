@@ -1,5 +1,5 @@
 // frontend/screens/AddTransactionScreen.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, Text, TouchableOpacity, StyleSheet, FlatList, 
   Modal, TextInput, KeyboardAvoidingView, Platform, 
@@ -10,6 +10,8 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { MotiView } from 'moti';
 import { useApi } from '../../services/api'; 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 import WishlistModal from '../../components/WishlistModal';
 import RecurringPaymentModal from '../../components/RecurringPaymentModal';
@@ -43,6 +45,7 @@ const PAYMENT_MODES: { label: string; value: PaymentMode; icon: any }[] = [
   { label: 'UPI', value: 'upi', icon: 'phone-portrait-outline' },
   { label: 'Card', value: 'card', icon: 'card-outline' },
   { label: 'Bank', value: 'bank_transfer', icon: 'business-outline' },
+  { label: 'Other', value: 'other', icon: 'ellipsis-horizontal-outline' }, // Issue #13 FIX
 ];
 
 export default function AddTransactionScreen() {
@@ -61,6 +64,11 @@ export default function AddTransactionScreen() {
   const [note, setNote] = useState('');
   const [intent, setIntent] = useState<IntentType>('want'); 
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('upi');
+
+  // Issue #14: Date state — defaults to today, user can back-date
+  const [maxDate] = useState(() => new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // --- CATEGORIES ---
   
@@ -106,21 +114,35 @@ export default function AddTransactionScreen() {
   ];
   
 
-  const handleCategoryPress = (category: CategoryItem) => {
+  const handleCategoryPress = async (category: CategoryItem) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (category.name === 'Settings') return; 
     setSelectedCategory(category);
-    setIntent('want'); 
+
+    // Issue #12 FIX: Pre-fill intent from remembered preference for this category
+    const INTENT_KEY = `intent_pref_${category.name}`;
+    const savedIntent = await AsyncStorage.getItem(INTENT_KEY);
+    setIntent((savedIntent as IntentType) || 'want');
+
+    setSelectedDate(new Date()); // reset date to today on each new transaction
+    setShowDatePicker(false);
     setTxModalVisible(true);
   };
 
  const handleTransactionSave = async () => {
-    // 1. THIS IS THE FIX: Prevent double-taps while loading or showing success
     if (isLoading || showSuccess) return; 
 
     if (!amount || isNaN(Number(amount))) {
       return Alert.alert("Wait a sec", "Please enter a valid amount.");
     }
+
+    // Issue #12 FIX: Remember intent choice for this category for next time
+    if (selectedCategory && activeTab === 'Expense') {
+      const INTENT_KEY = `intent_pref_${selectedCategory.name}`;
+      await AsyncStorage.setItem(INTENT_KEY, intent);
+    }
+
+    const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
 
     const payload = {
       amount: parseFloat(amount),
@@ -130,7 +152,7 @@ export default function AddTransactionScreen() {
       paymentMode: paymentMode,
       intent: activeTab === 'Expense' ? intent : undefined, 
       note: note,
-      date: new Date().toISOString().split('T')[0], 
+      date: dateStr, // Issue #14 FIX: Use user-selected date instead of always today
     };
 
     setIsLoading(true);
@@ -316,6 +338,33 @@ const renderGridItem = ({ item, index }: { item: CategoryItem, index: number }) 
                   onChangeText={setNote} 
                 />
               </View>
+
+              {/* Issue #14: Date picker row */}
+              <TouchableOpacity
+                style={[styles.inputBox, { marginTop: 10 }]}
+                onPress={() => { Haptics.selectionAsync(); setShowDatePicker(true); }}
+                activeOpacity={0.7}
+              >
+                <Feather name="calendar" size={16} color={COLORS.textMuted} style={styles.inputIcon} />
+                <Text style={[styles.textInput, { color: selectedDate.toDateString() === new Date().toDateString() ? COLORS.textMuted : COLORS.text, paddingTop: Platform.OS === 'ios' ? 10 : 6 }]}>
+                  {selectedDate.toDateString() === new Date().toDateString()
+                    ? 'Today (tap to change date)'
+                    : selectedDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </Text>
+              </TouchableOpacity>
+
+              {showDatePicker && (
+                <DateTimePicker
+                  value={selectedDate}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+                  maximumDate={maxDate}
+                  onChange={(event, date) => {
+                    if (Platform.OS === 'android') setShowDatePicker(false);
+                    if (event.type === 'set' && date) setSelectedDate(date);
+                  }}
+                />
+              )}
 
               {/* Primary Button */}
               <TouchableOpacity 
