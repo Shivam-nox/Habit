@@ -39,12 +39,12 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 interface AIResponse {
   action:
-    | "ADD_TX"
-    | "COACH_RESPONSE"
-    | "SHOW_ANALYTICS"
-    | "UPDATE_GOAL"
-    | "SET_BUDGET"
-    | "SHOW_REPORT";
+  | "ADD_TX"
+  | "COACH_RESPONSE"
+  | "SHOW_ANALYTICS"
+  | "UPDATE_GOAL"
+  | "SET_BUDGET"
+  | "SHOW_REPORT";
   type: "income" | "expense" | null;
   amount: number | null;
   category: string | null;
@@ -359,7 +359,7 @@ export const chatWithCoach = async (req: Request, res: Response) => {
 
     // ── 5. Call LLM ──
     const completion = await groq.chat.completions.create({
-      model: "llama-3.1-8b-instant",
+      model: "openai/gpt-oss-120b",
       messages: [
         { role: "system", content: systemPrompt },
         ...chatHistory,
@@ -467,9 +467,10 @@ export const chatWithCoach = async (req: Request, res: Response) => {
     ]);
 
     // ── 8. Fetch updated analytics for frontend refresh ──
-    // Only re-run if a transaction was logged (avoid double DB hit)
-    const freshAlerts =
-      newTx ? (await runFullAnalytics(userId)).alerts : analytics.alerts;
+    // Reuse the same analytics object — no need for a second DB hit.
+    // If a transaction was just logged, the snapshot values are still
+    // directionally correct for immediate UI feedback.
+    const freshAlerts = analytics.alerts;
 
     // ── 9. Build Response ──
     return res.json({

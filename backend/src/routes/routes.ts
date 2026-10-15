@@ -167,13 +167,11 @@ router.post('/transactions', requireAuth, async (req: express.Request, res: expr
     if (categoryName) {
       const categoriesList = await Storage.getCategories(userId, type);
       const matchedCategory = categoriesList.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
-
       if (matchedCategory) {
         realCategoryId = matchedCategory.id;
-      } else {
-        res.status(400).json({ error: `Category '${categoryName}' not found.` });
-        return;
       }
+      // Issue #4 FIX: Don't 400 if category name not found — just save without a category link
+      // This prevents silent transaction failures for categories not seeded in the DB
     }
 
     const tx = await Storage.addTransaction({
@@ -523,9 +521,10 @@ router.get('/chat-history', requireAuth, async (req: express.Request, res: expre
 
 router.get('/reports/generate', requireAuth, async (req: express.Request, res: express.Response) => {
   const userId = (req as any).userId;
+  const month = req.query.month as string;
   
   try {
-    const reportData = await Storage.getReportData(userId);
+    const reportData = await Storage.getReportData(userId, month);
     res.json({ success: true, data: reportData });
   } catch (e) {
     console.error("GET Report Data Error:", e);
@@ -585,6 +584,18 @@ router.get('/notifications', requireAuth, async (req: express.Request, res: expr
   } catch (error) {
     console.error('Error fetching notifications:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Issue #17: GET /chat-history — load last 20 messages so coach tab can restore conversation
+router.get('/chat-history', requireAuth, async (req: express.Request, res: express.Response) => {
+  try {
+    const userId = (req as any).userId;
+    const history = await Storage.getChatHistory(userId, 20);
+    res.json(history);
+  } catch (error) {
+    console.error('Error fetching chat history:', error);
+    res.status(500).json({ error: 'Failed to fetch chat history' });
   }
 });
 

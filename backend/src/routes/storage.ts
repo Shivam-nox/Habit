@@ -206,13 +206,6 @@ updateRecurringDate: async (recurringId: string, userId: string, nextDate: strin
     .orderBy(desc(transactions.date));
   },
 
-  getChatHistory: async (userId: string) => {
-    return await db.select()
-      .from(aiChatHistory)
-      .where(eq(aiChatHistory.userId, userId))
-      .orderBy(aiChatHistory.timestamp);
-  },
-
   addChatMessage: async (messageData: NewChatMessage) => {
     const [newMessage] = await db.insert(aiChatHistory).values(messageData).returning();
     return newMessage;
@@ -365,27 +358,81 @@ deleteTransaction: async (transactionId: string, userId: string) => {
       percentOfExpense: totalExp > 0 ? (Number(c.total) / totalExp) * 100 : 0
     }));
 
-    // 3. Get Behavior Stats
+    // 3. Get Behavior Stats (real data from behaviorAggregates)
     const [behavior] = await db.select()
       .from(behaviorAggregates)
       .where(and(eq(behaviorAggregates.userId, userId), eq(behaviorAggregates.monthYear, currentMonthYear)));
 
     const wantTotal = Number(behavior?.wantSpendTotal || 0);
-    const impulseScore = totalExp > 0 ? 100 - ((wantTotal / totalExp) * 100) : 100;
+    const needTotal = Number(behavior?.needSpendTotal || 0);
+    const behaviorTotal = wantTotal + needTotal;
+
+    // Issue #7 FIX: Real discipline score based on actual need/want ratio
+    const wantRatio = behaviorTotal > 0 ? wantTotal / behaviorTotal : 0;
+    const disciplineScore = Math.round(Math.max(0, Math.min(100, (1 - wantRatio) * 100)));
+    const impulseBuyingScore = Math.round(Math.max(0, Math.min(100, 100 - (wantRatio * 100))));
+    // Need/want breakdown as emotional spending proxy
+    const emotionalSpendingScore = behaviorTotal > 0
+      ? Math.round((wantTotal / behaviorTotal) * 100)
+      : 0;
+
+    // 4. Issue #10 FIX: Get income with baseIncome fallback from financial profile
+    let totalIncome = Number(monthStats?.totalIncome || 0);
+    if (totalIncome === 0) {
+      const [profile] = await db.select()
+        .from(financialProfiles)
+        .where(eq(financialProfiles.userId, userId));
+      if (profile?.baseIncome) {
+        totalIncome = Number(profile.baseIncome);
+      }
+    }
+
+    // 5. Issue #5 FIX: Add trends array — last 6 months from monthlySummaries
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+    const trendMonths: string[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const dt = new Date();
+      dt.setMonth(dt.getMonth() - i);
+      trendMonths.push(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`);
+    }
+
+    const monthlyRows = await db.select()
+      .from(monthlySummaries)
+      .where(and(
+        eq(monthlySummaries.userId, userId),
+        sql`${monthlySummaries.monthYear} >= ${trendMonths[0]}`
+      ))
+      .orderBy(monthlySummaries.monthYear);
+
+    const monthLabels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const trends = trendMonths.map(my => {
+      const row = monthlyRows.find(r => r.monthYear === my);
+      const [yr, mo] = my.split('-');
+      return {
+        month: monthLabels[parseInt(mo) - 1],
+        monthYear: my,
+        income: Number(row?.totalIncome || 0),
+        expense: Number(row?.totalExpense || 0),
+        savings: Number(row?.totalIncome || 0) - Number(row?.totalExpense || 0),
+      };
+    });
 
     return {
       stats: {
-        totalIncome: Number(monthStats?.totalIncome || 0),
+        totalIncome,
         totalExpense: totalExp,
       },
       categoryBreakdown,
       behavior: {
-        disciplineScore: impulseScore > 50 ? 85 : 45, // Basic calculation based on wants
-        impulseBuyingScore: impulseScore,
-        emotionalSpendingScore: 50,
-        weekendOverspendRatio: 1.0,
-        lateNightSpendPercent: 10,
-        subscriptionEstimate: 0
+        disciplineScore,
+        impulseBuyingScore,
+        emotionalSpendingScore,
+        weekendOverspendRatio: 1.0, // Would need per-tx day-of-week data
+        lateNightSpendPercent: 0,   // Would need per-tx time data
+        subscriptionEstimate: 0,
+        needTotal,
+        wantTotal,
       },
       dailyAverages: {
         daily: totalExp / d.getDate(),
@@ -393,7 +440,8 @@ deleteTransaction: async (transactionId: string, userId: string) => {
       },
       prediction: {
         projectedMonthlyExpense: (totalExp / d.getDate()) * 30
-      }
+      },
+      trends,
     };
   },
   
@@ -433,12 +481,17 @@ deleteTransaction: async (transactionId: string, userId: string) => {
 
 
   // --- REPORTS GENERATOR (NEW) ---
-  getReportData: async (userId: string) => {
-    const today = new Date();
-    const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-    const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' });
+  getReportData: async (userId: string, targetMonthStr?: string) => {
+    let targetDate = new Date();
+    if (targetMonthStr) {
+      const [year, month] = targetMonthStr.split('-');
+      targetDate = new Date(Number(year), Number(month) - 1, 1);
+    }
+
+    const currentMonthStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+    const monthName = targetDate.toLocaleString('default', { month: 'long', year: 'numeric' });
     
-    const lastMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const lastMonthDate = new Date(targetDate.getFullYear(), targetDate.getMonth() - 1, 1);
     const lastMonthStr = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`;
 
     // 1. Get Monthly Summaries (Current & Last)
@@ -578,5 +631,15 @@ createNotification: async (data: { userId: string; title: string; message: strin
       .from(appNotifications)
       .where(eq(appNotifications.userId, userId))
       .orderBy(desc(appNotifications.createdAt));
-  }
+  },
+
+  // Issue #17: getChatHistory — retrieve last N messages for coach tab memory
+  getChatHistory: async (userId: string, limit: number = 20) => {
+    const history = await db.select()
+      .from(aiChatHistory)
+      .where(eq(aiChatHistory.userId, userId))
+      .orderBy(desc(aiChatHistory.timestamp))
+      .limit(limit);
+    return history.reverse(); // Return in chronological order
+  },
 };

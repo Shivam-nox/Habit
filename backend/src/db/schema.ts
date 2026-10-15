@@ -35,11 +35,11 @@ export const users = pgTable('users', {
 
 // 2. Financial Profiles (The AI Coaching Context)
 export const financialProfiles = pgTable("financial_profiles", {
-  userId: text("user_id").primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: 'cascade' }),
   baseIncome: decimal("base_income", { precision: 12, scale: 2 }).default("0"),
-  fixedNeeds: decimal("fixed_needs", { precision: 12, scale: 2 }).default("0"), 
+  fixedNeeds: decimal("fixed_needs", { precision: 12, scale: 2 }).default("0"),
   targetSavingsGoal: decimal("target_savings_goal", { precision: 12, scale: 2 }).default("0"),
-  spendingWeakness: text("spending_weakness"), 
+  spendingWeakness: text("spending_weakness"),
   primaryGoal: text("primary_goal"),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -52,19 +52,19 @@ export const categories = pgTable("categories", {
   icon: text("icon").notNull(),
   color: text("color").default("#000000"),
   isCustom: boolean("is_custom").default(false),
-  userId: text("user_id").references(() => users.id), 
+  userId: uuid("user_id").references(() => users.id),
 });
 
-// 4. Transactions
+// 4. Transactions — FIX #1: only one primaryKey (id). userId is notNull FK only.
 export const transactions = pgTable("transactions", {
   id: uuid("id").primaryKey().defaultRandom(),
- userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
   categoryId: uuid("category_id").references(() => categories.id),
   type: typeEnum("type").notNull(),
   paymentMode: paymentModeEnum("payment_mode").default("cash").notNull(),
   debtType: debtTypeEnum("debt_type").default("none").notNull(),
-  debtContact: text("debt_contact"), 
+  debtContact: text("debt_contact"),
   intent: intentEnum("intent"),
   source: sourceEnum("source").default("manual"),
   note: text("note"),
@@ -76,19 +76,19 @@ export const transactions = pgTable("transactions", {
 // 5. Recurring Rules
 export const recurringConfigs = pgTable("recurring_configs", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id").notNull().references(() => users.id),
+  userId: uuid("user_id").notNull().references(() => users.id),
   categoryId: uuid("category_id").references(() => categories.id),
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
-  type: typeEnum("type").notNull(), 
-  frequency: frequencyEnum("frequency").notNull(), 
-  nextDate: date("next_date").notNull(), 
+  type: typeEnum("type").notNull(),
+  frequency: frequencyEnum("frequency").notNull(),
+  nextDate: date("next_date").notNull(),
   isActive: boolean("is_active").default(true),
 });
 
 // 6. Saving Goals (Wishlist)
 export const goals = pgTable("goals", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id").notNull().references(() => users.id),
+  userId: uuid("user_id").notNull().references(() => users.id),
   name: text("name").notNull(),
   targetAmount: decimal("target_amount", { precision: 12, scale: 2 }).notNull(),
   currentAmount: decimal("current_amount", { precision: 12, scale: 2 }).default("0"),
@@ -99,7 +99,7 @@ export const goals = pgTable("goals", {
 // 7. Budgets
 export const budgets = pgTable("budgets", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id").notNull().references(() => users.id),
+  userId: uuid("user_id").notNull().references(() => users.id),
   categoryId: uuid("category_id").notNull().references(() => categories.id),
   limitAmount: decimal("limit_amount", { precision: 12, scale: 2 }).notNull(),
   hasNotified80: boolean("has_notified_80").default(false),
@@ -108,7 +108,7 @@ export const budgets = pgTable("budgets", {
 
 // 8. Habit Metrics
 export const habitMetrics = pgTable("habit_metrics", {
-  userId: text("user_id").primaryKey().references(() => users.id),
+  userId: uuid("user_id").primaryKey().references(() => users.id),
   currentStreak: integer("current_streak").default(0),
   longestStreak: integer("longest_streak").default(0),
   lastLoggedAt: date("last_logged_at"),
@@ -117,7 +117,7 @@ export const habitMetrics = pgTable("habit_metrics", {
 // 9. AI Chat History
 export const aiChatHistory = pgTable("ai_chat_history", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id").notNull().references(() => users.id),
+  userId: uuid("user_id").notNull().references(() => users.id),
   role: roleEnum("role").notNull(),
   message: text("message").notNull(),
   timestamp: timestamp("timestamp").defaultNow(),
@@ -173,7 +173,7 @@ export const budgetsRelations = relations(budgets, ({ one }) => ({
 
 export const monthlySummaries = pgTable("monthly_summaries", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id").notNull().references(() => users.id),
+  userId: uuid("user_id").notNull().references(() => users.id),
   monthYear: text("month_year").notNull(), // Format: 'YYYY-MM'
   totalIncome: decimal("total_income", { precision: 12, scale: 2 }).default("0"),
   totalExpense: decimal("total_expense", { precision: 12, scale: 2 }).default("0"),
@@ -184,7 +184,7 @@ export const monthlySummaries = pgTable("monthly_summaries", {
 
 export const monthlyCategorySummaries = pgTable("monthly_category_summaries", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id").notNull().references(() => users.id),
+  userId: uuid("user_id").notNull().references(() => users.id),
   categoryId: uuid("category_id").notNull().references(() => categories.id),
   monthYear: text("month_year").notNull(), // Format: 'YYYY-MM'
   totalAmount: decimal("total_amount", { precision: 12, scale: 2 }).default("0"),
@@ -194,7 +194,7 @@ export const monthlyCategorySummaries = pgTable("monthly_category_summaries", {
 
 export const behaviorAggregates = pgTable("behavior_aggregates", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id").notNull().references(() => users.id),
+  userId: uuid("user_id").notNull().references(() => users.id),
   monthYear: text("month_year").notNull(), // Format: 'YYYY-MM'
   needSpendTotal: decimal("need_spend_total", { precision: 12, scale: 2 }).default("0"),
   wantSpendTotal: decimal("want_spend_total", { precision: 12, scale: 2 }).default("0"),

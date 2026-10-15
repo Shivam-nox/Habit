@@ -454,7 +454,8 @@ export const analyzeBehavior = async (
   userId: string,
   from: string,
   to: string,
-  spendingWeakness: string
+  spendingWeakness: string,
+  baseIncome: number = 0
 ): Promise<BehaviorAnalysis> => {
   // Fetch all transactions with timestamps
   const txns = await db
@@ -479,6 +480,11 @@ export const analyzeBehavior = async (
     )
     .orderBy(transactions.createdAt);
 
+  // NOTE (Issue #26): Time-based insights (like Emotional Spending and Late Night Spending) 
+  // currently rely on `createdAt` (the timestamp of record creation) rather than `date`.
+  // If a user backdates a transaction using the Add Tab's date picker, these specific 
+  // behavioral metrics will reflect when the user logged it, not when it occurred.
+
   // ── Emotional Spending: 3+ transactions within 1 hour ──
   let emotionalClusters = 0;
   for (let i = 0; i < txns.length - 2; i++) {
@@ -488,9 +494,10 @@ export const analyzeBehavior = async (
   }
   const emotionalSpendingScore = Math.min(100, emotionalClusters * 15);
 
-  // ── Impulse Buying: transactions < ₹500 in "want" category ──
+  // ── Impulse Buying: transactions < threshold in "want" category ──
+  const impulseThreshold = baseIncome > 0 ? baseIncome * 0.005 : 500;
   const impulseCount = txns.filter(
-    (t) => parseFloat(t.amount as string) < 500 && t.intent === "want"
+    (t) => parseFloat(t.amount as string) < impulseThreshold && t.intent === "want"
   ).length;
   const impulseBuyingScore = Math.min(100, (impulseCount / Math.max(txns.length, 1)) * 150);
 
@@ -1100,7 +1107,7 @@ export const runFullAnalytics = async (userId: string): Promise<FullAnalytics> =
       dates.daysElapsed,
       dates.daysInMonth
     ),
-    analyzeBehavior(userId, dates.firstDayOfMonth, dates.today, spendingWeakness),
+    analyzeBehavior(userId, dates.firstDayOfMonth, dates.today, spendingWeakness, baseIncome),
     getPeakSpendingTimes(userId, dates.firstDayOfMonth),
     getSpendingVolatility(userId, dates.firstDayOfMonth, dates.today),
   ]);
