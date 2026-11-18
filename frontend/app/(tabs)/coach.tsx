@@ -10,9 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { MotiView, MotiText, AnimatePresence } from 'moti';
-import { Easing } from 'react-native-reanimated';
+import { haptics } from '../../utils/haptics';
 import { useApi } from '../../services/api';
 import { useFocusEffect } from 'expo-router';
 
@@ -37,81 +35,41 @@ interface Message {
   sender: 'user' | 'ai';
 }
 
-// --- Typing indicator: three dots, gentle pulse ---
+// --- Typing indicator: three dots ---
 const TypingIndicator = () => (
-  <MotiView
-    from={{ opacity: 0, translateY: 6, scale: 0.95 }}
-    animate={{ opacity: 1, translateY: 0, scale: 1 }}
-    exit={{ opacity: 0, scale: 0.9 }}
-    transition={{ type: 'timing', duration: 220 }}
-    style={styles.typingBubble}
-  >
+  <View style={styles.typingBubble}>
     {[0, 1, 2].map((i) => (
-      <MotiView
+      <View
         key={i}
-        from={{ opacity: 0.3, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{
-          loop: true,
-          type: 'timing',
-          duration: 600,
-          delay: i * 160,
-          easing: Easing.inOut(Easing.ease),
-        }}
         style={styles.typingDot}
       />
     ))}
-  </MotiView>
+  </View>
 );
 
 const Bubble = ({ item, isUser }: { item: Message; isUser: boolean }) => {
-  const [pressed, setPressed] = useState(false);
   return (
-    <MotiView
-      from={{ opacity: 0, translateY: 10, scale: 0.96 }}
-      animate={{ opacity: 1, translateY: 0, scale: 1 }}
-      transition={{ type: 'spring', damping: 16, stiffness: 180 }}
+    <View
       style={[styles.row, isUser ? styles.rowUser : styles.rowAi]}
     >
-      <Pressable
-        onPressIn={() => setPressed(true)}
-        onPressOut={() => setPressed(false)}
+      <View
+        style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAi]}
       >
-        <MotiView
-          animate={{ scale: pressed ? 0.98 : 1 }}
-          transition={{ type: 'timing', duration: 120 }}
-          style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAi]}
-        >
-          <FormattedText text={item.text} isUser={isUser} />
-        </MotiView>
-      </Pressable>
-    </MotiView>
+        <FormattedText text={item.text} isUser={isUser} />
+      </View>
+    </View>
   );
 };
 
 const Suggestion = ({ title, icon, onPress, delay }: any) => {
-  const [pressed, setPressed] = useState(false);
   return (
-    <MotiView
-      from={{ opacity: 0, translateY: 8 }}
-      animate={{ opacity: 1, translateY: 0 }}
-      transition={{ type: 'timing', duration: 300, delay }}
+    <Pressable
+      onPress={() => onPress(title)}
+      style={styles.chip}
     >
-      <Pressable
-        onPressIn={() => setPressed(true)}
-        onPressOut={() => setPressed(false)}
-        onPress={() => onPress(title)}
-      >
-        <MotiView
-          animate={{ scale: pressed ? 0.94 : 1 }}
-          transition={{ type: 'timing', duration: 100 }}
-          style={styles.chip}
-        >
-          <MaterialCommunityIcons name={icon} size={15} color={C.brand} />
-          <Text style={styles.chipText}>{title}</Text>
-        </MotiView>
-      </Pressable>
-    </MotiView>
+      <MaterialCommunityIcons name={icon} size={15} color={C.brand} />
+      <Text style={styles.chipText}>{title}</Text>
+    </Pressable>
   );
 };
 
@@ -133,14 +91,10 @@ const FormattedText = ({ text, isUser }: { text: string; isUser: boolean }) => {
   );
 };
 
-// Issue #8: Mini snapshot banner after AI replies with action
 const SnapshotBanner = ({ snapshot }: { snapshot: any }) => {
   if (!snapshot) return null;
   return (
-    <MotiView
-      from={{ opacity: 0, translateY: -4 }}
-      animate={{ opacity: 1, translateY: 0 }}
-      transition={{ type: 'timing', duration: 300 }}
+    <View
       style={styles.snapshotBanner}
     >
       <View style={styles.snapshotItem}>
@@ -159,7 +113,7 @@ const SnapshotBanner = ({ snapshot }: { snapshot: any }) => {
         <Text style={styles.snapshotLabel}>Savings rate</Text>
         <Text style={styles.snapshotValue}>{Math.round(snapshot.savingsRate || 0)}%</Text>
       </View>
-    </MotiView>
+    </View>
   );
 };
 
@@ -213,7 +167,7 @@ export default function ChatScreen() {
     setIsLoading(true);
     setSendPop(true);
     setTimeout(() => setSendPop(false), 180);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.impact();
 
     try {
       const response = await api.chatWithCoach(text);
@@ -228,7 +182,7 @@ export default function ChatScreen() {
         setSnapshot(response.snapshot);
       }
       if (response.action === 'ADD_TX' && response.transaction) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        haptics.notification();
       }
     } catch {
       setMessages((prev) => [
@@ -251,108 +205,76 @@ export default function ChatScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
       >
-        <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-          {/* Header */}
-          <MotiView
-            from={{ opacity: 0, translateY: -6 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            transition={{ type: 'timing', duration: 260 }}
-            style={styles.header}
-          >
-            <View style={styles.headerLeft}>
-              <MotiView
-                from={{ opacity: 0.5, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1.15 }}
-                transition={{
-                  loop: true,
-                  type: 'timing',
-                  duration: 1100,
-                  easing: Easing.inOut(Easing.ease),
-                }}
-                style={styles.dot}
-              />
-              <Text style={styles.headerTitle}>Coach</Text>
-            </View>
-            <Text style={styles.headerSub}>Duo</Text>
-          </MotiView>
+        {/* Header — always at top */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <View style={styles.dot} />
+            <Text style={styles.headerTitle}>Coach</Text>
+          </View>
+          <Text style={styles.headerSub}>Duo</Text>
+        </View>
 
-          {/* Issue #8: Snapshot banner (shown after AI transaction actions) */}
-          {snapshot && <SnapshotBanner snapshot={snapshot} />}
+        {/* Issue #8: Snapshot banner */}
+        {snapshot && <SnapshotBanner snapshot={snapshot} />}
 
-          {/* Messages */}
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <Bubble item={item} isUser={item.sender === 'user'} />}
-            contentContainerStyle={styles.list}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-            onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
-            ListFooterComponent={
-              <AnimatePresence>{isLoading && <TypingIndicator />}</AnimatePresence>
-            }
-            keyboardDismissMode="interactive"
-            showsVerticalScrollIndicator={false}
-          />
+        {/* Messages — fills remaining space */}
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <Bubble item={item} isUser={item.sender === 'user'} />}
+          contentContainerStyle={styles.list}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          ListFooterComponent={isLoading ? <TypingIndicator /> : null}
+          keyboardDismissMode="interactive"
+          showsVerticalScrollIndicator={false}
+          style={{ flex: 1 }}
+        />
 
-          {/* Issue #18: Chips after every AI reply */}
-          {showChips && (
-            <View style={styles.suggestionsWrap}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 8, paddingHorizontal: 20 }}
-              >
-                {SUGGESTION_CHIPS.map((chip, i) => (
-                  <Suggestion
-                    key={chip.title}
-                    title={chip.title}
-                    icon={chip.icon}
-                    onPress={sendMessage}
-                    delay={i * 60}
-                  />
-                ))}
-              </ScrollView>
-            </View>
-          )}
-
-          {/* Input */}
-          <View style={styles.inputOuter}>
-            <MotiView
-              animate={{
-                borderColor: inputFocused ? C.brand : C.border,
-                scale: inputFocused ? 1.01 : 1,
-              }}
-              transition={{ type: 'timing', duration: 200 }}
-              style={styles.inputWrap}
+        {/* Chips after every AI reply */}
+        {showChips && (
+          <View style={styles.suggestionsWrap}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8, paddingHorizontal: 20 }}
             >
-              <TextInput
-                style={styles.input}
-                placeholder="Message Duo…"
-                placeholderTextColor={C.muted}
-                value={input}
-                onChangeText={setInput}
-                multiline
-                editable={!isLoading}
-                onFocus={() => setInputFocused(true)}
-                onBlur={() => setInputFocused(false)}
-              />
-              <Pressable
-                onPress={() => sendMessage(input)}
-                disabled={!input.trim() || isLoading}
-              >
-                <MotiView
-                  animate={{
-                    scale: sendPop ? 0.85 : 1,
-                    opacity: !input.trim() || isLoading ? 0.3 : 1,
-                  }}
-                  transition={{ type: 'spring', damping: 10, stiffness: 300 }}
-                  style={styles.sendBtn}
-                >
-                  <Feather name="arrow-up" size={18} color={C.surface} />
-                </MotiView>
-              </Pressable>
-            </MotiView>
+              {SUGGESTION_CHIPS.map((chip, i) => (
+                <Suggestion
+                  key={chip.title}
+                  title={chip.title}
+                  icon={chip.icon}
+                  onPress={sendMessage}
+                  delay={i * 60}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Input */}
+        <View style={styles.inputOuter}>
+          <View style={[styles.inputWrap, inputFocused && { borderColor: C.brand }]}>
+            <TextInput
+              style={styles.input}
+              placeholder="Message Duo…"
+              placeholderTextColor={C.muted}
+              value={input}
+              onChangeText={setInput}
+              multiline
+              editable={!isLoading}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
+            />
+            <Pressable
+              onPress={() => sendMessage(input)}
+              disabled={!input.trim() || isLoading}
+            >
+              <View style={[styles.sendBtn, { opacity: !input.trim() || isLoading ? 0.3 : 1 }]}>
+                <Feather name="arrow-up" size={18} color={C.surface} />
+              </View>
+            </Pressable>
           </View>
         </View>
       </KeyboardAvoidingView>

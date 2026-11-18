@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../utils/haptics';
 
 const C = {
   brand: '#2E7D6E',
@@ -42,7 +42,7 @@ export default function GoalModal({ visible, goal, onClose, onAllocate }: Props)
     setLoading(true);
     try {
       await onAllocate(goal.id, amount);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.notification();
       setAmount('');
       onClose();
     } catch (error: any) {
@@ -70,7 +70,7 @@ export default function GoalModal({ visible, goal, onClose, onAllocate }: Props)
                 )}
               </View>
             </View>
-            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); onClose(); }} style={styles.closeBtn}>
+            <TouchableOpacity onPress={() => { haptics.selection(); onClose(); }} style={styles.closeBtn}>
               <Feather name="x" size={20} color={C.subtext} />
             </TouchableOpacity>
           </View>

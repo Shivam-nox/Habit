@@ -41,3 +41,13 @@ app-example
 # generated native folders
 /ios
 /android
+
+.env
+*firebase-adminsdk*.json
+google-services.json
+dist/
+
+.env
+*firebase-adminsdk*.json
+google-services.json
+dist/

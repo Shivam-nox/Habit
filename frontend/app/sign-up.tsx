@@ -5,7 +5,6 @@ import {
   Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { Link } from 'expo-router';
-import { MotiView } from 'moti';
 import { Feather } from '@expo/vector-icons';
 import { useApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -49,10 +48,7 @@ export default function SignUpScreen() {
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 20}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <MotiView
-          from={{ opacity: 0, translateY: 16 }}
-          animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: 'timing', duration: 400 }}
+        <View
           style={styles.container}
         >
           <View style={styles.brandRow}>
@@ -142,7 +138,7 @@ export default function SignUpScreen() {
               </TouchableOpacity>
             </Link>
           </View>
-        </MotiView>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

@@ -1,177 +1,12 @@
-// ================================================================
-// CHANGES NEEDED — api.ts additions + backend route changes
-// Add these to your existing api.ts and backend router files
-// ================================================================
+import { storage } from '../utils/storage';
+import { Platform } from 'react-native';
 
-// ───────────────────────────────────────────────────────────────
-// 1. ADD TO services/api.ts  (paste inside the return { ... } block)
-// ───────────────────────────────────────────────────────────────
-
-/*
-
-    // ==========================================
-    // 6. ANALYTICS DASHBOARD (NEW)
-    // ==========================================
-
-    getDashboard: async () => {
-      const response = await fetch(`${BASE_URL}/dashboard`, {
-        headers: await getHeaders(),
-      });
-      return handleResponse(response);
-    },
-
-    // ==========================================
-    // 7. COACHING INSIGHTS (NEW)
-    // ==========================================
-
-    getCoachingInsights: async () => {
-      const response = await fetch(`${BASE_URL}/insights`, {
-        headers: await getHeaders(),
-      });
-      return handleResponse(response);
-    },
-
-    // ==========================================
-    // 8. ALERTS (NEW)
-    // ==========================================
-
-    getAlerts: async () => {
-      const response = await fetch(`${BASE_URL}/alerts`, {
-        headers: await getHeaders(),
-      });
-      return handleResponse(response);
-    },
-
-    // ==========================================
-    // 9. WEEKLY REPORT (NEW)
-    // ==========================================
-
-    getWeeklyReport: async () => {
-      const response = await fetch(`${BASE_URL}/weekly-report`, {
-        headers: await getHeaders(),
-      });
-      return handleResponse(response);
-    },
-
-    // ==========================================
-    // 10. UPDATE BUDGET (NEW)
-    // ==========================================
-
-    updateBudget: async (categoryId: string, limitAmount: number) => {
-      const response = await fetch(`${BASE_URL}/budgets`, {
-        method: 'POST',
-        headers: await getHeaders(),
-        body: JSON.stringify({ categoryId, limitAmount }),
-      });
-      return handleResponse(response);
-    },
-
-    // ==========================================
-    // 11. ADD EXPENSE (manual, non-AI) (NEW)
-    // ==========================================
-
-    addExpense: async (data: {
-      amount: number;
-      type: 'income' | 'expense';
-      categoryId?: string;
-      intent?: 'need' | 'want';
-      paymentMode?: string;
-      note?: string;
-      date: string;
-    }) => {
-      const response = await fetch(`${BASE_URL}/expenses`, {
-        method: 'POST',
-        headers: await getHeaders(),
-        body: JSON.stringify(data),
-      });
-      return handleResponse(response);
-    },
-
-*/
-
-
-// ───────────────────────────────────────────────────────────────
-// 2. BACKEND ROUTE ADDITIONS  (add to your Express router file)
-// ───────────────────────────────────────────────────────────────
-
-/*
-  All these handlers are already written in chat.ts from the previous step.
-  Just wire them to routes:
-
-  import {
-    chatWithCoach,
-    getDashboard,
-    getCoachingInsights,
-    getAlerts,
-    getWeeklyReportEndpoint,
-    updateBudget,
-    updateGoal,
-    addExpense,
-  } from './routes/chat';
-
-  // Existing
-  router.post('/chat',          authMiddleware, chatWithCoach);
-
-  // New — add these:
-  router.get('/dashboard',      authMiddleware, getDashboard);
-  router.get('/insights',       authMiddleware, getCoachingInsights);
-  router.get('/alerts',         authMiddleware, getAlerts);
-  router.get('/weekly-report',  authMiddleware, getWeeklyReportEndpoint);
-  router.post('/budgets',       authMiddleware, updateBudget);
-  router.post('/goals-create',  authMiddleware, updateGoal);
-  router.post('/expenses',      authMiddleware, addExpense);
-*/
-
-
-// ───────────────────────────────────────────────────────────────
-// 3. NAVIGATION — add Charts screen to your navigator
-// ───────────────────────────────────────────────────────────────
-
-/*
-  In your Tab or Stack navigator (e.g. navigation/AppNavigator.tsx):
-
-  import ChartsScreen from '../screens/ChartsScreen';
-  import DashboardScreen from '../screens/DashboardScreen';
-
-  // Stack navigator additions:
-  <Stack.Screen name="Charts" component={ChartsScreen} options={{ headerShown: false }} />
-
-  // OR if Charts is a tab:
-  <Tab.Screen
-    name="Charts"
-    component={ChartsScreen}
-    options={{
-      tabBarIcon: ({ color }) => <MaterialCommunityIcons name="chart-bar" size={22} color={color} />,
-      tabBarLabel: 'Charts',
-    }}
-  />
-*/
-
-
-// ───────────────────────────────────────────────────────────────
-// 4. PACKAGE INSTALL — no new packages needed!
-// ───────────────────────────────────────────────────────────────
-// All charts are hand-rolled using Animated API (no external lib).
-// Everything uses packages you already have:
-//   - expo-linear-gradient  ✅
-//   - moti                  ✅
-//   - expo-haptics          ✅
-//   - @expo/vector-icons    ✅
-//   - react-native-safe-area-context ✅
-
-
-// ───────────────────────────────────────────────────────────────
-// 5. COMPLETE UPDATED api.ts (drop-in replacement)
-// ───────────────────────────────────────────────────────────────
-
-import * as SecureStore from 'expo-secure-store';
-const HOST=process.env.EXPO_PUBLIC_API_URL || ' '
-console.log('API HOST:', HOST);
+const HOST = process.env.EXPO_PUBLIC_API_URL || '';
 const BASE_URL = `${HOST}/api`;
 
 export const useApi = () => {
-  const getHeaders = async () => {
-    const token = await SecureStore.getItemAsync('jwt_token');
+  const getHeaders = async (): Promise<Record<string, string>> => {
+    const token = await storage.getItem('jwt_token');
     return {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -181,20 +16,32 @@ export const useApi = () => {
   const handleResponse = async (response: Response) => {
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(data.error || 'An unexpected error occurred');
+      throw new Error((data as any).error || 'An unexpected error occurred');
     }
     return data;
   };
 
   return {
-    // ── AUTH ──────────────────────────────────────
+    // ── AUTH ──────────────────────────────────────────────────────
     login: async (email: string, password: string) => {
-      const response = await fetch(`${BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      return handleResponse(response);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+      try {
+        const response = await fetch(`${BASE_URL}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        return handleResponse(response);
+      } catch (e: any) {
+        clearTimeout(timeoutId);
+        if (e.name === 'AbortError') {
+          throw new Error('Server is warming up — please wait 30 seconds and try again.');
+        }
+        throw e;
+      }
     },
 
     register: async (name: string, email: string, password: string) => {
@@ -207,10 +54,11 @@ export const useApi = () => {
     },
 
     logout: async () => {
-      await SecureStore.deleteItemAsync('jwt_token');
+      await storage.deleteItem('jwt_token');
     },
 
     savePushToken: async (token: string) => {
+      if (Platform.OS === 'web') return; // push tokens not supported on web
       const response = await fetch(`${BASE_URL}/auth/push-token`, {
         method: 'POST',
         headers: await getHeaders(),
@@ -226,7 +74,7 @@ export const useApi = () => {
       return handleResponse(response);
     },
 
-    // ── TRANSACTIONS & CATEGORIES ─────────────────
+    // ── TRANSACTIONS & CATEGORIES ─────────────────────────────────
     getCategories: async (type: 'income' | 'expense' | 'transfer') => {
       const response = await fetch(`${BASE_URL}/categories/${type}`, {
         headers: await getHeaders(),
@@ -251,23 +99,23 @@ export const useApi = () => {
     },
 
     updateTransaction: async (id: string, transactionData: any) => {
-  const response = await fetch(`${BASE_URL}/transactions/${id}`, {
-    method: 'PUT',
-    headers: await getHeaders(),
-    body: JSON.stringify(transactionData),
-  });
-  return handleResponse(response);
-},
+      const response = await fetch(`${BASE_URL}/transactions/${id}`, {
+        method: 'PUT',
+        headers: await getHeaders(),
+        body: JSON.stringify(transactionData),
+      });
+      return handleResponse(response);
+    },
 
-deleteTransaction: async (id: string) => {
-  const response = await fetch(`${BASE_URL}/transactions/${id}`, {
-    method: 'DELETE',
-    headers: await getHeaders(),
-  });
-  return handleResponse(response);
-},
+    deleteTransaction: async (id: string) => {
+      const response = await fetch(`${BASE_URL}/transactions/${id}`, {
+        method: 'DELETE',
+        headers: await getHeaders(),
+      });
+      return handleResponse(response);
+    },
 
-    // ── RECURRING ────────────────────────────────
+    // ── RECURRING ─────────────────────────────────────────────────
     getRecurringConfigs: async () => {
       const response = await fetch(`${BASE_URL}/recurring`, {
         headers: await getHeaders(),
@@ -284,43 +132,38 @@ deleteTransaction: async (id: string) => {
       return handleResponse(response);
     },
 
-
     updateRecurringDate: async (id: string, nextDate: string) => {
-  const response = await fetch(`${BASE_URL}/recurring/${id}/update-date`, {
-    method: 'POST',
-    headers: await getHeaders(),
-    body: JSON.stringify({ nextDate }),
-  });
-  return handleResponse(response);
-},
+      const response = await fetch(`${BASE_URL}/recurring/${id}/update-date`, {
+        method: 'POST',
+        headers: await getHeaders(),
+        body: JSON.stringify({ nextDate }),
+      });
+      return handleResponse(response);
+    },
 
+    processRecurring: async (id: string) => {
+      const response = await fetch(`${BASE_URL}/recurring/${id}/process`, {
+        method: 'POST',
+        headers: await getHeaders(),
+      });
+      return handleResponse(response);
+    },
 
-    // ── RECURRING ACTIONS ────────────────────────────
-processRecurring: async (id: string) => {
-  const response = await fetch(`${BASE_URL}/recurring/${id}/process`, {
-    method: 'POST',
-    headers: await getHeaders(),
-  });
-  return handleResponse(response);
-},
+    cancelRecurring: async (id: string) => {
+      const response = await fetch(`${BASE_URL}/recurring/${id}/cancel`, {
+        method: 'POST',
+        headers: await getHeaders(),
+      });
+      return handleResponse(response);
+    },
 
-cancelRecurring: async (id: string) => {
-  const response = await fetch(`${BASE_URL}/recurring/${id}/cancel`, {
-    method: 'POST',
-    headers: await getHeaders(),
-  });
-  return handleResponse(response);
-},
-
-    // ── GOALS ────────────────────────────────────
+    // ── GOALS ─────────────────────────────────────────────────────
     getGoals: async () => {
       const response = await fetch(`${BASE_URL}/goals`, {
         headers: await getHeaders(),
       });
       return handleResponse(response);
     },
-
-
 
     createGoal: async (goalData: any) => {
       const response = await fetch(`${BASE_URL}/goals`, {
@@ -340,7 +183,7 @@ cancelRecurring: async (id: string) => {
       return handleResponse(response);
     },
 
-    // ── PROFILE ──────────────────────────────────
+    // ── PROFILE ───────────────────────────────────────────────────
     getProfile: async () => {
       const response = await fetch(`${BASE_URL}/profile`, {
         headers: await getHeaders(),
@@ -357,7 +200,7 @@ cancelRecurring: async (id: string) => {
       return handleResponse(response);
     },
 
-    // ── AI COACH ─────────────────────────────────
+    // ── AI COACH ──────────────────────────────────────────────────
     chatWithCoach: async (message: string) => {
       const response = await fetch(`${BASE_URL}/chat`, {
         method: 'POST',
@@ -381,7 +224,7 @@ cancelRecurring: async (id: string) => {
       return handleResponse(response);
     },
 
-    // ── ANALYTICS (NEW) ──────────────────────────
+    // ── ANALYTICS ─────────────────────────────────────────────────
     getDashboard: async () => {
       const response = await fetch(`${BASE_URL}/dashboard`, {
         headers: await getHeaders(),
@@ -404,14 +247,14 @@ cancelRecurring: async (id: string) => {
     },
 
     getReportData: async (month?: string) => {
-      const url = month ? `${BASE_URL}/reports/generate?month=${month}` : `${BASE_URL}/reports/generate`;
-      const response = await fetch(url, {
-        headers: await getHeaders(),
-      });
+      const url = month
+        ? `${BASE_URL}/reports/generate?month=${month}`
+        : `${BASE_URL}/reports/generate`;
+      const response = await fetch(url, { headers: await getHeaders() });
       return handleResponse(response);
     },
 
-    // ── BUDGETS (NEW) ─────────────────────────────
+    // ── BUDGETS ───────────────────────────────────────────────────
     updateBudget: async (categoryId: string, limitAmount: number) => {
       const response = await fetch(`${BASE_URL}/budgets`, {
         method: 'POST',
@@ -421,7 +264,7 @@ cancelRecurring: async (id: string) => {
       return handleResponse(response);
     },
 
-    // ── EXPENSE (manual REST, non-AI) (NEW) ───────
+    // ── EXPENSE ───────────────────────────────────────────────────
     addExpense: async (data: {
       amount: number;
       type: 'income' | 'expense';

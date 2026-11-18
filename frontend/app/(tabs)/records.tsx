@@ -7,8 +7,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { MotiView } from 'moti';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../utils/haptics';
 import { useApi } from '../../services/api';
 import { useRouter } from 'expo-router';
 
@@ -94,7 +93,7 @@ export default function DashboardScreen() {
   const [notifications, setNotifications] = useState<any[]>([]);
 
   const handleLogout = () => {
-    Haptics.selectionAsync();
+    haptics.selection();
     Alert.alert('Log out', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -177,7 +176,7 @@ export default function DashboardScreen() {
         <TouchableOpacity 
           style={[styles.recordCard, { flexDirection: 'column', alignItems: 'stretch' }]} 
           activeOpacity={0.7}
-          onPress={() => { Haptics.selectionAsync(); setSelectedGoal(item); }}
+          onPress={() => { haptics.selection(); setSelectedGoal(item); }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={styles.iconBox}>
@@ -219,7 +218,7 @@ export default function DashboardScreen() {
         <TouchableOpacity 
           style={styles.recordCard}
           activeOpacity={0.7}
-          onPress={() => { Haptics.selectionAsync(); setSelectedRecurring(item); }}
+          onPress={() => { haptics.selection(); setSelectedRecurring(item); }}
         >
           <View style={styles.iconBox}>
             <MaterialCommunityIcons name="calendar-sync" size={18} color={C.text} />
@@ -239,7 +238,7 @@ export default function DashboardScreen() {
         <TouchableOpacity 
           style={styles.recordCard}
           activeOpacity={0.7}
-          onPress={() => { Haptics.selectionAsync(); setSelectedTransaction(item); }}
+          onPress={() => { haptics.selection(); setSelectedTransaction(item); }}
         >
           <View style={styles.iconBox}>
             <Ionicons name={item.categoryIcon as any || 'receipt-outline'} size={18} color={C.text} />
@@ -256,14 +255,11 @@ export default function DashboardScreen() {
     }
 
     return (
-      <MotiView
+      <View
         key={item.id || index}
-        from={{ opacity: 0, translateY: 8 }}
-        animate={{ opacity: 1, translateY: 0 }}
-        transition={{ type: 'timing', duration: 250, delay: index * 30 }}
       >
         {content}
-      </MotiView>
+      </View>
     );
   };
 
@@ -323,7 +319,7 @@ export default function DashboardScreen() {
             {/* Open Notifications Modal */}
             <TouchableOpacity 
               style={styles.iconBtn} 
-              onPress={() => { Haptics.selectionAsync(); setNotifModalVisible(true); }} 
+              onPress={() => { haptics.selection(); setNotifModalVisible(true); }} 
               activeOpacity={0.6}
             >
               <Ionicons name="notifications-outline" size={20} color={C.text} />
@@ -341,7 +337,7 @@ export default function DashboardScreen() {
         </View>
 
         {/* Overview */}
-        <MotiView from={{ opacity: 0, translateY: 6 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300 }} style={styles.heroCard}>
+        <View style={styles.heroCard}>
           <Text style={styles.heroLabel}>Spent this month</Text>
           <AnimatedAmount value={a.stats.totalExpense} style={styles.heroAmount} />
           <View style={styles.heroProgressBarContainer}>
@@ -353,7 +349,7 @@ export default function DashboardScreen() {
               {spentPct.toFixed(0)}%
             </Text>
           </View>
-        </MotiView>
+        </View>
 
         {/* List */}
         <Text style={styles.sectionTitle}>Your records</Text>
@@ -363,7 +359,7 @@ export default function DashboardScreen() {
               key={tab}
               activeOpacity={0.6}
               style={[styles.navBtn, activeTab === tab && styles.navBtnActive]}
-              onPress={() => { Haptics.selectionAsync(); setActiveTab(tab); }}
+              onPress={() => { haptics.selection(); setActiveTab(tab); }}
             >
               <Text style={[styles.navText, activeTab === tab && styles.navTextActive]}>{tab}</Text>
             </TouchableOpacity>
@@ -394,7 +390,7 @@ export default function DashboardScreen() {
               return (
                 <TouchableOpacity
                   key={pageNum}
-                  onPress={() => { Haptics.selectionAsync(); setCurrentPage(pageNum); }}
+                  onPress={() => { haptics.selection(); setCurrentPage(pageNum); }}
                   style={[styles.pageBtn, isActive && styles.pageBtnActive]}
                   activeOpacity={0.7}
                 >

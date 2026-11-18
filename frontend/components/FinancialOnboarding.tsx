@@ -1,8 +1,8 @@
 // frontend/components/FinancialOnboarding.tsx
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Dimensions, Alert, ScrollView, ActivityIndicator } from 'react-native';
-import Slider from '@react-native-community/slider';
-import * as Haptics from 'expo-haptics';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Dimensions, Alert, ScrollView, ActivityIndicator, Platform, TextInput } from 'react-native';
+// Slider imported conditionally below
+import { haptics } from '../utils/haptics';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 
@@ -51,7 +51,7 @@ export default function FinancialOnboarding({ visible, onComplete }: { visible: 
 
   // --- Handlers ---
   const handleNext = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    haptics.impact();
 
     if (step === 0 && !selectedGoal) {
       Alert.alert("Wait a sec!", "Please select a main objective so we can tailor your experience.");
@@ -67,7 +67,7 @@ export default function FinancialOnboarding({ visible, onComplete }: { visible: 
 
   const handleBack = () => {
     if (isLoading) return; // Prevent going back while loading
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.impact();
     if (step > 0) setStep(step - 1);
   };
 
@@ -88,14 +88,14 @@ export default function FinancialOnboarding({ visible, onComplete }: { visible: 
   };
 
   const toggleWeakness = (item: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.impact();
     setSelectedWeakness(prev =>
       prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item]
     );
   };
 
   const selectGoal = (goalId: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.impact();
     setSelectedGoal(goalId);
   };
 
@@ -136,14 +136,24 @@ export default function FinancialOnboarding({ visible, onComplete }: { visible: 
             <Text style={styles.mainSubtitle}>Your baseline budget calculation.</Text>
             <View style={styles.sliderCard}>
               <Text style={styles.amount}>₹{income.toLocaleString()}</Text>
-              <Slider
-                style={styles.slider}
-                minimumValue={10000} maximumValue={300000} step={5000}
-                value={income} onValueChange={setIncome}
-                minimumTrackTintColor={COLORS.primary}
-                maximumTrackTintColor={'rgba(167, 215, 197, 0.4)'}
-                thumbTintColor={COLORS.accent}
-              />
+              {Platform.OS !== 'web' ? (() => {
+                const Slider = require('@react-native-community/slider').default;
+                return <Slider
+                  style={styles.slider}
+                  minimumValue={10000} maximumValue={300000} step={5000}
+                  value={income} onValueChange={setIncome}
+                  minimumTrackTintColor={COLORS.primary}
+                  maximumTrackTintColor={'rgba(167, 215, 197, 0.4)'}
+                  thumbTintColor={COLORS.accent}
+                />;
+              })() : (
+                <TextInput
+                  style={styles.webInput}
+                  keyboardType="numeric"
+                  value={String(income)}
+                  onChangeText={v => setIncome(Number(v.replace(/\D/g, '')) || 10000)}
+                />
+              )}
             </View>
           </View>
         );
@@ -154,14 +164,24 @@ export default function FinancialOnboarding({ visible, onComplete }: { visible: 
             <Text style={styles.mainSubtitle}>Rent, utilities, EMIs, groceries.</Text>
             <View style={styles.sliderCard}>
               <Text style={styles.amount}>₹{needs.toLocaleString()}</Text>
-              <Slider
-                style={styles.slider}
-                minimumValue={0} maximumValue={income} step={1000}
-                value={needs} onValueChange={setNeeds}
-                minimumTrackTintColor={COLORS.primary}
-                maximumTrackTintColor={'rgba(167, 215, 197, 0.4)'}
-                thumbTintColor={COLORS.accent}
-              />
+              {Platform.OS !== 'web' ? (() => {
+                const Slider = require('@react-native-community/slider').default;
+                return <Slider
+                  style={styles.slider}
+                  minimumValue={0} maximumValue={income} step={1000}
+                  value={needs} onValueChange={setNeeds}
+                  minimumTrackTintColor={COLORS.primary}
+                  maximumTrackTintColor={'rgba(167, 215, 197, 0.4)'}
+                  thumbTintColor={COLORS.accent}
+                />;
+              })() : (
+                <TextInput
+                  style={styles.webInput}
+                  keyboardType="numeric"
+                  value={String(needs)}
+                  onChangeText={v => setNeeds(Number(v.replace(/\D/g, '')) || 0)}
+                />
+              )}
             </View>
           </View>
         );
@@ -405,6 +425,16 @@ const styles = StyleSheet.create({
   slider: {
     width: width - 80,
     height: 40
+  },
+  webInput: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 16,
+    color: '#111827',
+    marginTop: 8,
+    width: '100%',
   },
 
   // Minimal Weaknesses Bubbles

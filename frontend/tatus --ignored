@@ -1,0 +1,26 @@
+[33mcommit 5cd334802b9d0aff41e397d5478bc425c7d8f030[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: Shivam-nox <shvm945@gmail.com>
+Date:   Wed Nov 18 14:45:13 2026 +0530
+
+    Add Expo PWA web build
+
+ .gitignore                      |   5 [32m+[m
+ app/(tabs)/add.tsx              |   4 [32m+[m[31m-[m
+ app/(tabs)/coach.tsx            | 139 [32m+++++++++++++[m[31m--------------[m
+ app/sign-in.tsx                 |  21 [32m+[m[31m----[m
+ components/TransactionModal.tsx |  22 [32m++[m[31m---[m
+ context/AuthContext.tsx         |  20 [32m+[m[31m---[m
+ services/api.ts                 |  37 [31m--------[m
+ utils/demoData.ts               | 203 [31m----------------------------------------[m
+ 8 files changed, 85 insertions(+), 366 deletions(-)
+
+[33mcommit 506c87b9fc8e8a65bb6b6690aa0b707dfb04cf0d[m
+Author: Shivam Dwivedi <shvm945@gmail.com>
+Date:   Wed Nov 18 13:59:46 2026 +0530
+
+    Revamp README for Spendly project
+    
+    Updated project name and enhanced README structure with new features, tech stack, and setup instructions.
+
+ README.md | Bin [31m1191[m -> [32m3518[m bytes
+ 1 file changed, 0 insertions(+), 0 deletions(-)

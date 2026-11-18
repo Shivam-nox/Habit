@@ -4,8 +4,7 @@ import React from 'react';
 import { View, Platform, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
-import { MotiView } from 'moti';
+import { haptics } from '../../utils/haptics';
 import { usePushNotifications } from '../../hooks/usePushNotifications';
 
 // --- Minimal palette ---
@@ -20,11 +19,7 @@ const COLORS = {
 const TabIcon = ({ name, focused }: { name: any; focused: boolean }) => (
   <View style={{ alignItems: 'center' }}>
     <Feather name={name} size={22} color={focused ? COLORS.ink : COLORS.muted} />
-    <MotiView
-      animate={{ opacity: focused ? 1 : 0, scale: focused ? 1 : 0.5 }}
-      transition={{ type: 'timing', duration: 200 }}
-      style={styles.dot}
-    />
+    <View style={[styles.dot, { opacity: focused ? 1 : 0 }]} />
   </View>
 );
 
@@ -35,7 +30,7 @@ export default function TabLayout() {
   return (
     <Tabs
       screenListeners={{
-        tabPress: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light),
+        tabPress: () => haptics.impact(),
       }}
       screenOptions={{
         headerShown: false,

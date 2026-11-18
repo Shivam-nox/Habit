@@ -1,8 +1,7 @@
 // frontend/context/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import * as SecureStore from 'expo-secure-store';
+import { storage } from '../utils/storage';
 
-// 1. Define the types for your context
 interface AuthContextType {
   isAuthenticated: boolean;
   isAuthLoaded: boolean;
@@ -10,7 +9,6 @@ interface AuthContextType {
   logout: () => Promise<void>;
 }
 
-// 2. Initialize with null, but cast to the type
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -20,10 +18,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const loadToken = async () => {
       try {
-        const token = await SecureStore.getItemAsync('jwt_token');
+        const token = await storage.getItem('jwt_token');
         setIsAuthenticated(!!token);
       } catch (error) {
-        console.error("Failed to read SecureStore", error);
+        console.error('Failed to read token from storage', error);
       } finally {
         setIsAuthLoaded(true);
       }
@@ -32,13 +30,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (token: string) => {
-    await SecureStore.setItemAsync('jwt_token', token);
-    setIsAuthenticated(true); 
+    await storage.setItem('jwt_token', token);
+    setIsAuthenticated(true);
   };
 
   const logout = async () => {
-    await SecureStore.deleteItemAsync('jwt_token');
-    setIsAuthenticated(false); 
+    await storage.deleteItem('jwt_token');
+    setIsAuthenticated(false);
   };
 
   return (
@@ -48,11 +46,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// 3. Add a safety check to the hook
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };

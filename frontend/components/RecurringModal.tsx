@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ActivityIndicator, Alert, Platform } from 'react-native';
 import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { haptics } from '../utils/haptics';
+// DateTimePicker loaded natively only
 
 const C = {
   brand: '#2E7D6E',
@@ -85,7 +85,7 @@ export default function RecurringModal({ visible, recurring, onClose, onProcess,
     setLoadingType('process');
     try {
       await onProcess(recurring.id);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.notification();
       onClose();
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Failed to process payment.');
@@ -130,7 +130,7 @@ export default function RecurringModal({ visible, recurring, onClose, onProcess,
     setLoadingType('date');
     try {
       await onUpdateDate(recurring.id, tempDate);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.notification();
       setIsEditingDate(false);
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Failed to update date.');
@@ -148,7 +148,7 @@ export default function RecurringModal({ visible, recurring, onClose, onProcess,
           setLoadingType('cancel');
           try {
             await onCancel(recurring.id);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            haptics.notification();
             onClose();
           } catch (error: any) {
             Alert.alert('Error', error?.message || 'Failed to cancel subscription.');
@@ -178,7 +178,7 @@ export default function RecurringModal({ visible, recurring, onClose, onProcess,
                 </View>
               </View>
             </View>
-            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); onClose(); }} style={styles.closeBtn}>
+            <TouchableOpacity onPress={() => { haptics.selection(); onClose(); }} style={styles.closeBtn}>
               <Feather name="x" size={20} color={C.subtext} />
             </TouchableOpacity>
           </View>
@@ -223,22 +223,25 @@ export default function RecurringModal({ visible, recurring, onClose, onProcess,
             </View>
 
             {/* NATIVE PICKER */}
-            {showPicker && (
-              <View style={Platform.OS === 'ios' ? styles.iosPickerContainer : {}}>
-                <DateTimePicker
-                  value={dateValue}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
-                  onChange={handleDateChange}
-                  minimumDate={minDate}
-                />
-                {Platform.OS === 'ios' && (
-                  <TouchableOpacity style={styles.iosDoneBtn} onPress={() => setShowPicker(false)}>
-                    <Text style={styles.iosDoneText}>Done</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
+            {showPicker && Platform.OS !== 'web' && (() => {
+              const DateTimePicker = require('@react-native-community/datetimepicker').default;
+              return (
+                <View style={Platform.OS === 'ios' ? styles.iosPickerContainer : {}}>
+                  <DateTimePicker
+                    value={dateValue}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+                    onChange={handleDateChange}
+                    minimumDate={minDate}
+                  />
+                  {Platform.OS === 'ios' && (
+                    <TouchableOpacity style={styles.iosDoneBtn} onPress={() => setShowPicker(false)}>
+                      <Text style={styles.iosDoneText}>Done</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+            })()}
 
             <View style={styles.divider} />
 

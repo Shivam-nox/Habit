@@ -7,11 +7,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context'; 
 import { Ionicons, Feather } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { MotiView } from 'moti';
+import { haptics } from '../../utils/haptics';
 import { useApi } from '../../services/api'; 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import DateTimePicker from '@react-native-community/datetimepicker';
+// DateTimePicker loaded natively only
 
 import WishlistModal from '../../components/WishlistModal';
 import RecurringPaymentModal from '../../components/RecurringPaymentModal';
@@ -115,7 +114,7 @@ export default function AddTransactionScreen() {
   
 
   const handleCategoryPress = async (category: CategoryItem) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.impact();
     if (category.name === 'Settings') return; 
     setSelectedCategory(category);
 
@@ -160,7 +159,7 @@ export default function AddTransactionScreen() {
     try {
       const savedTx = await api.addTransaction(payload);
       if (savedTx) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        haptics.notification();
         setShowSuccess(true);
         setTimeout(() => {
           setShowSuccess(false);
@@ -180,14 +179,7 @@ export default function AddTransactionScreen() {
   };
 
 const renderGridItem = ({ item, index }: { item: CategoryItem, index: number }) => (
-    <MotiView
-      from={{ opacity: 0 }} 
-      animate={{ opacity: 1 }}
-      transition={{ 
-        type: 'timing',
-        duration: 250,
-        delay: index * 15
-      }}
+    <View
       style={styles.gridItemContainer}
     >
       <TouchableOpacity 
@@ -200,7 +192,7 @@ const renderGridItem = ({ item, index }: { item: CategoryItem, index: number }) 
         </View>
         <Text style={styles.gridLabel} numberOfLines={1}>{item.name}</Text>
       </TouchableOpacity>
-    </MotiView>
+    </View>
   );
 
   return (
@@ -229,7 +221,7 @@ const renderGridItem = ({ item, index }: { item: CategoryItem, index: number }) 
               key={tab} 
               style={[styles.tab, activeTab === tab && styles.activeTab]} 
               onPress={() => { 
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); 
+                haptics.impact(); 
                 setActiveTab(tab); 
               }}
             >
@@ -292,7 +284,7 @@ const renderGridItem = ({ item, index }: { item: CategoryItem, index: number }) 
                     <TouchableOpacity 
                       key={mode.value} 
                       style={[styles.chip, paymentMode === mode.value && styles.chipActive]}
-                      onPress={() => { Haptics.selectionAsync(); setPaymentMode(mode.value); }}
+                      onPress={() => { haptics.selection(); setPaymentMode(mode.value); }}
                     >
                       <Ionicons 
                         name={mode.icon} 
@@ -314,13 +306,13 @@ const renderGridItem = ({ item, index }: { item: CategoryItem, index: number }) 
                   <View style={styles.toggleContainer}>
                     <TouchableOpacity 
                       style={[styles.toggleBtn, intent === 'need' && styles.toggleBtnActive]} 
-                      onPress={() => { Haptics.selectionAsync(); setIntent('need'); }}
+                      onPress={() => { haptics.selection(); setIntent('need'); }}
                     >
                       <Text style={[styles.toggleText, intent === 'need' && styles.toggleTextActive]}>Need</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
                       style={[styles.toggleBtn, intent === 'want' && styles.toggleBtnActive]} 
-                      onPress={() => { Haptics.selectionAsync(); setIntent('want'); }}
+                      onPress={() => { haptics.selection(); setIntent('want'); }}
                     >
                       <Text style={[styles.toggleText, intent === 'want' && styles.toggleTextActive]}>Want</Text>
                     </TouchableOpacity>
@@ -342,7 +334,7 @@ const renderGridItem = ({ item, index }: { item: CategoryItem, index: number }) 
               {/* Issue #14: Date picker row */}
               <TouchableOpacity
                 style={[styles.inputBox, { marginTop: 10 }]}
-                onPress={() => { Haptics.selectionAsync(); setShowDatePicker(true); }}
+                onPress={() => { haptics.selection(); setShowDatePicker(true); }}
                 activeOpacity={0.7}
               >
                 <Feather name="calendar" size={16} color={COLORS.textMuted} style={styles.inputIcon} />
@@ -353,18 +345,21 @@ const renderGridItem = ({ item, index }: { item: CategoryItem, index: number }) 
                 </Text>
               </TouchableOpacity>
 
-              {showDatePicker && (
-                <DateTimePicker
-                  value={selectedDate}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
-                  maximumDate={maxDate}
-                  onChange={(event, date) => {
-                    if (Platform.OS === 'android') setShowDatePicker(false);
-                    if (event.type === 'set' && date) setSelectedDate(date);
-                  }}
-                />
-              )}
+              {showDatePicker && Platform.OS !== 'web' && (() => {
+                const DateTimePicker = require('@react-native-community/datetimepicker').default;
+                return (
+                  <DateTimePicker
+                    value={selectedDate}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+                    maximumDate={maxDate}
+                    onChange={(event: any, date?: Date) => {
+                      if (Platform.OS === 'android') setShowDatePicker(false);
+                      if (event.type === 'set' && date) setSelectedDate(date);
+                    }}
+                  />
+                );
+              })()}
 
               {/* Primary Button */}
               <TouchableOpacity 
@@ -382,10 +377,10 @@ const renderGridItem = ({ item, index }: { item: CategoryItem, index: number }) 
                   {isLoading ? (
                     <ActivityIndicator size="large" color={COLORS.text} />
                   ) : (
-                    <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} style={styles.successBadge}>
+                    <View style={styles.successBadge}>
                       <Ionicons name="checkmark-circle" size={56} color={COLORS.text} />
                       <Text style={styles.successText}>Transaction logged</Text>
-                    </MotiView>
+                    </View>
                   )}
                 </View>
               )}
@@ -491,8 +486,8 @@ const styles = StyleSheet.create({
     alignItems: 'center' 
   },
   iconBox: { 
-    width: width * 0.16, 
-    height: width * 0.16, 
+    width: 56, 
+    height: 56, 
     borderRadius: 16, 
     backgroundColor: COLORS.surface, 
     alignItems: 'center', 

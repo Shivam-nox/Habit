@@ -1,14 +1,11 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, Alert
+  ActivityIndicator, Alert, Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { MotiView } from 'moti';
-import * as Haptics from 'expo-haptics';
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
+import { haptics } from '../../utils/haptics';
 import { useApi } from '../../services/api';
 
 const C = {
@@ -34,13 +31,12 @@ export default function ReportsScreen() {
   const nextMonth = () => setTargetDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1));
 
   const handleGenerateReport = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setIsGenerating(true);
+    haptics.impact();
     try {
       const res = await api.getReportData?.(getMonthStr(targetDate)) || { data: null };
       if (res.data) {
         setReportData(res.data);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        haptics.notification();
       }
     } catch (e) {
       Alert.alert('Error', 'Could not generate report.');
@@ -52,9 +48,8 @@ export default function ReportsScreen() {
   const handleExportPDF = async () => {
     if (!reportData) return Alert.alert('Generate first', 'Please generate a report before exporting.');
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.impact();
     const { monthlyReport: m, budgetReport: b } = reportData;
-
     const htmlContent = `
       <html>
         <head>
@@ -76,7 +71,6 @@ export default function ReportsScreen() {
         </head>
         <body>
           <h1>Financial wrap-up: ${reportData.month}</h1>
-
           <h2>Monthly overview</h2>
           <div class="grid">
             <div class="box"><span>Income</span><strong>${fmt(m.income)}</strong></div>
@@ -84,16 +78,13 @@ export default function ReportsScreen() {
             <div class="box"><span>Savings</span><strong>${fmt(m.savings)}</strong></div>
             <div class="box"><span>Rate</span><strong>${m.savingsRate}%</strong></div>
           </div>
-
           <div class="alert">
             <strong>Reality check</strong><br/>
             <ul>${m.realityCheck.map((msg: string) => `<li>${msg}</li>`).join('')}</ul>
           </div>
-
           <h2>Budget control</h2>
           <p>Overall utilization: <strong>${b.overallUtilization}%</strong></p>
           <p>Top problem area: <strong class="over">${b.topProblemArea}</strong></p>
-
           <table>
             <tr><th>Category</th><th>Limit</th><th>Spent</th><th>Difference</th></tr>
             ${b.categories.map((cat: any) => `
@@ -105,7 +96,6 @@ export default function ReportsScreen() {
               </tr>
             `).join('')}
           </table>
-
           <div style="margin-top: 20px;">
             <strong>Insights</strong>
             <ul>${b.insights.map((msg: string) => `<li>${msg}</li>`).join('')}</ul>
@@ -113,10 +103,20 @@ export default function ReportsScreen() {
         </body>
       </html>
     `;
-
+    if (Platform.OS === 'web') {
+      const printWindow = (window as any).open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        printWindow.print();
+      }
+      return;
+    }
     try {
-      const { uri } = await Print.printToFileAsync({ html: htmlContent });
-      await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+      const PrintMod = await import('expo-print');
+      const SharingMod = await import('expo-sharing');
+      const { uri } = await PrintMod.printToFileAsync({ html: htmlContent });
+      await SharingMod.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
     } catch (error) {
       Alert.alert('Error', 'Could not export PDF.');
     }
@@ -133,7 +133,7 @@ export default function ReportsScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        <MotiView from={{ opacity: 0, translateY: 6 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300 }} style={styles.banner}>
+        <View style={styles.banner}>
           <MaterialCommunityIcons name="file-chart-outline" size={24} color={C.brand} style={{ marginBottom: 10 }} />
           <Text style={styles.bannerTitle}>Monthly & budget report</Text>
           <Text style={styles.bannerSub}>Compile a clean summary of your spending and budget discipline.</Text>
@@ -156,10 +156,10 @@ export default function ReportsScreen() {
               </>
             )}
           </TouchableOpacity>
-        </MotiView>
+        </View>
 
         {reportData ? (
-          <MotiView from={{ opacity: 0, translateY: 8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 280 }} style={styles.reportCard}>
+          <View style={styles.reportCard}>
             <View style={styles.cardHeader}>
               <View style={styles.iconBox}><Feather name="check" size={18} color={C.success} /></View>
               <View style={{ flex: 1 }}>
@@ -195,7 +195,7 @@ export default function ReportsScreen() {
                 ))}
               </View>
             )}
-          </MotiView>
+          </View>
         ) : (
           <View style={styles.emptyState}>
             <Feather name="file-text" size={26} color={C.border} style={{ marginBottom: 8 }} />

@@ -17,6 +17,7 @@
     "android": {
       "package": "com.shivam.spendly",
       "versionCode": 1,
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./constants/logo.png",
         "backgroundColor": "#FFFFFF"
@@ -25,14 +26,30 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "single"
+      "output": "single",
+      "display": "standalone",
+      "name": "Spendly",
+      "shortName": "Spendly",
+      "themeColor": "#2E7D6E",
+      "backgroundColor": "#FAFAFA",
+      "favicon": "./constants/logo.png"
     },
     "plugins": [
       "expo-router",
       "@react-native-community/datetimepicker",
       "expo-web-browser",
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./constants/logo.png",
+          "color": "#ffffff",
+          "sounds": [],
+          "enableBackgroundRemoteNotifications": true,
+          "useNextNotificationsApi": true
+        }
+      ]
     ],
     "extra": {
       "router": {

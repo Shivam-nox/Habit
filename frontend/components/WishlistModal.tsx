@@ -5,9 +5,8 @@ import {
   Modal, KeyboardAvoidingView, Platform, Alert, ScrollView, ActivityIndicator, SafeAreaView
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { MotiView, AnimatePresence } from 'moti';
+import { haptics } from '../utils/haptics';
+// DateTimePicker loaded natively only
 import { useApi } from '.././services/api'; // Make sure path is correct!
 
 interface WishlistModalProps {
@@ -28,13 +27,9 @@ const COLORS = {
 };
 
 const FormRow = ({ children, delay }: { children: React.ReactNode, delay: number }) => (
-  <MotiView
-    from={{ opacity: 0, translateY: 15 }}
-    animate={{ opacity: 1, translateY: 0 }}
-    transition={{ type: 'timing', duration: 400, delay }}
-  >
+  <View>
     {children}
-  </MotiView>
+  </View>
 );
 
 export default function WishlistModal({ visible, onClose }: WishlistModalProps) {
@@ -74,7 +69,7 @@ export default function WishlistModal({ visible, onClose }: WishlistModalProps) 
       if (savedGoal) {
         setIsLoading(false);
         setIsSuccess(true);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        haptics.notification();
 
         setTimeout(() => {
           setIsSuccess(false);
@@ -98,7 +93,7 @@ export default function WishlistModal({ visible, onClose }: WishlistModalProps) 
         <View style={styles.header}>
           <Text style={styles.headerTitle}>New Goal</Text>
           <TouchableOpacity 
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onClose(); }} 
+            onPress={() => { haptics.impact(); onClose(); }} 
             style={styles.closeBtn} 
             disabled={isLoading || isSuccess}
           >
@@ -165,36 +160,32 @@ export default function WishlistModal({ visible, onClose }: WishlistModalProps) 
               </TouchableOpacity>
             </FormRow>
 
-            {showPicker && (
-              <DateTimePicker
-                value={date}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={onDateChange}
-                minimumDate={new Date()}
-              />
-            )}
+            {showPicker && Platform.OS !== 'web' && (() => {
+              const DateTimePicker = require('@react-native-community/datetimepicker').default;
+              return (
+                <DateTimePicker
+                  value={date}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={onDateChange}
+                  minimumDate={new Date()}
+                />
+              );
+            })()}
             
             <View style={{ height: 60 }} />
           </ScrollView>
         </KeyboardAvoidingView>
 
         {/* Animated Overlay */}
-        <AnimatePresence>
-          {(isLoading || isSuccess) && (
-            <MotiView 
-              from={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }}
+        {(isLoading || isSuccess) && (
+            <View 
               style={styles.overlay}
             >
               {isLoading ? (
                 <ActivityIndicator size="large" color={COLORS.primary} />
               ) : (
-                <MotiView 
-                  from={{ scale: 0.8, opacity: 0 }} 
-                  animate={{ scale: 1, opacity: 1 }} 
-                  transition={{ type: 'spring', damping: 15 }}
+                <View 
                   style={styles.successContainer}
                 >
                   <View style={styles.heartCircle}>
@@ -202,11 +193,10 @@ export default function WishlistModal({ visible, onClose }: WishlistModalProps) 
                   </View>
                   <Text style={styles.successTitle}>Goal Added</Text>
                   <Text style={styles.successSub}>We'll help you find ways to save for this.</Text>
-                </MotiView>
+                </View>
               )}
-            </MotiView>
+            </View>
           )}
-        </AnimatePresence>
       </SafeAreaView>
     </Modal>
   );

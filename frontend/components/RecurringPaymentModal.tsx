@@ -5,9 +5,8 @@ import {
   Modal, SafeAreaView, ScrollView, Alert, Platform, ActivityIndicator, KeyboardAvoidingView 
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { MotiView, AnimatePresence } from 'moti';
+import { haptics } from '../utils/haptics';
+// DateTimePicker loaded natively only
 import { useApi } from '.././services/api'; 
 
 type TabType = 'Expense' | 'Income';
@@ -31,13 +30,9 @@ const COLORS = {
 };
 
 const FormRow = ({ children, delay }: { children: React.ReactNode, delay: number }) => (
-  <MotiView
-    from={{ opacity: 0, translateY: 15 }}
-    animate={{ opacity: 1, translateY: 0 }}
-    transition={{ type: 'timing', duration: 400, delay }}
-  >
+  <View>
     {children}
-  </MotiView>
+  </View>
 );
 
 export default function RecurringPaymentModal({ visible, onClose }: RecurringPaymentModalProps) {
@@ -84,7 +79,7 @@ export default function RecurringPaymentModal({ visible, onClose }: RecurringPay
       if (savedConfig) {
         setIsLoading(false);
         setIsSuccess(true);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        haptics.notification();
 
         setTimeout(() => {
           setIsSuccess(false);
@@ -109,7 +104,7 @@ export default function RecurringPaymentModal({ visible, onClose }: RecurringPay
         <View style={styles.regHeader}>
           <Text style={styles.regHeaderTitle}>New Recurring</Text>
           <TouchableOpacity 
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onClose(); }} 
+            onPress={() => { haptics.impact(); onClose(); }} 
             style={styles.closeBtn} 
             disabled={isLoading || isSuccess}
           >
@@ -141,7 +136,7 @@ export default function RecurringPaymentModal({ visible, onClose }: RecurringPay
                   <TouchableOpacity 
                     key={t} 
                     style={[styles.segmentBtn, regType === t && styles.segmentBtnActive]} 
-                    onPress={() => { Haptics.selectionAsync(); setRegType(t as TabType); }}
+                    onPress={() => { haptics.selection(); setRegType(t as TabType); }}
                   >
                     <Text style={[styles.segmentText, regType === t && styles.segmentTextActive]}>{t}</Text>
                   </TouchableOpacity>
@@ -171,7 +166,7 @@ export default function RecurringPaymentModal({ visible, onClose }: RecurringPay
                   <TouchableOpacity 
                     key={f} 
                     style={[styles.freqChip, regFrequency === f && styles.freqChipActive]} 
-                    onPress={() => { Haptics.selectionAsync(); setRegFrequency(f as FrequencyType); }}
+                    onPress={() => { haptics.selection(); setRegFrequency(f as FrequencyType); }}
                   >
                     <Text style={[styles.freqText, regFrequency === f && styles.freqTextActive]}>{f}</Text>
                   </TouchableOpacity>
@@ -224,27 +219,22 @@ export default function RecurringPaymentModal({ visible, onClose }: RecurringPay
               </TouchableOpacity>
             </FormRow>
 
-            {showStartPicker && <DateTimePicker value={startDate} mode="date" display={Platform.OS === 'ios' ? 'spinner' : 'default'} onChange={onStartChange} minimumDate={new Date()} />}
-            {showEndPicker && <DateTimePicker value={endDate || startDate} mode="date" display={Platform.OS === 'ios' ? 'spinner' : 'default'} onChange={onEndChange} minimumDate={startDate} />}
+            {showStartPicker && Platform.OS !== 'web' && (() => { const DTP = require('@react-native-community/datetimepicker').default; return <DTP value={startDate} mode="date" display={Platform.OS === 'ios' ? 'spinner' : 'default'} onChange={onStartChange} minimumDate={new Date()} />; })()}
+            {showEndPicker && Platform.OS !== 'web' && (() => { const DTP = require('@react-native-community/datetimepicker').default; return <DTP value={endDate || startDate} mode="date" display={Platform.OS === 'ios' ? 'spinner' : 'default'} onChange={onEndChange} minimumDate={startDate} />; })()}
             
             <View style={{ height: 60 }} />
           </ScrollView>
         </KeyboardAvoidingView>
 
         {/* Animated Overlay */}
-        <AnimatePresence>
-          {(isLoading || isSuccess) && (
-            <MotiView 
-              from={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        {(isLoading || isSuccess) && (
+            <View 
               style={styles.overlay}
             >
               {isLoading ? (
                 <ActivityIndicator size="large" color={COLORS.primary} />
               ) : (
-                <MotiView 
-                  from={{ scale: 0.8, opacity: 0 }} 
-                  animate={{ scale: 1, opacity: 1 }} 
-                  transition={{ type: 'spring', damping: 15 }}
+                <View 
                   style={styles.successContainer}
                 >
                   <View style={styles.iconCircle}>
@@ -252,11 +242,10 @@ export default function RecurringPaymentModal({ visible, onClose }: RecurringPay
                   </View>
                   <Text style={styles.successTitle}>Scheduled</Text>
                   <Text style={styles.successSub}>Your recurring payment is set.</Text>
-                </MotiView>
+                </View>
               )}
-            </MotiView>
+            </View>
           )}
-        </AnimatePresence>
       </SafeAreaView>
     </Modal>
   );

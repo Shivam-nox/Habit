@@ -1,61 +1,179 @@
-# Expense Habit Coach - Frontend
+# 💸 Spendly
 
-A modern web application for tracking expenses and building better financial habits.
+<p align="center">
+    <b>AI-Powered Expense Tracker & Habit Coach</b><br/>
+    <em>Take control of your money. Build smarter financial habits.</em>
+</p>
 
-## Overview
+<p align="center">
+    <img src="https://img.shields.io/badge/Expo-React%20Native-blue?style=for-the-badge" />
+    <img src="https://img.shields.io/badge/Backend-Node.js-green?style=for-the-badge" />
+    <img src="https://img.shields.io/badge/Database-Neon%20PostgreSQL-purple?style=for-the-badge" />
+    <img src="https://img.shields.io/badge/AI-Groq-orange?style=for-the-badge" />
+</p>
 
-This is the frontend application for the Expense Habit Coach project, built with modern web technologies to help users monitor spending patterns and achieve financial goals.
+---
 
-## Features
+## ✨ Overview
 
-- 💰 Track daily expenses
-- 📊 View spending analytics and insights
-- 📈 Monitor expense trends over time
-- 🎯 Set and manage budget goals
-- 📱 Responsive design for all devices
+**Spendly** is a premium, AI-powered personal finance tracker designed to help users:
 
-## Tech Stack
+- Track expenses in real time  
+- Stay within budget limits  
+- Understand spending behavior  
+- Get actionable AI-driven insights  
 
-- **Framework**: [Your framework - e.g., React, Vue, Angular]
-- **Build Tool**: [e.g., Vite, Webpack]
-- **Styling**: [e.g., CSS, Tailwind, Sass]
-- **State Management**: [e.g., Redux, Pinia]
-- **HTTP Client**: [e.g., Axios, Fetch API]
+Built with performance and design in mind, Spendly delivers a **smooth, modern UI** combined with a **powerful analytics engine**.
 
-## Getting Started
+---
 
-### Prerequisites
-- Node.js (v14 or higher)
+## 🏗️ Architecture & Tech Stack
+
+### 📱 Frontend
+- React Native (**Expo Router**)
+- Custom Premium UI (Teal, Gold & Slate theme)
+- `moti` + `react-native-reanimated` for fluid animations
+- `expo-print` & `expo-sharing` for PDF exports
+
+### ⚙️ Backend
+- Node.js & Express.js
+- **Drizzle ORM** (type-safe queries)
+- **Neon Serverless PostgreSQL**
+- **Groq API** for AI coaching
+- JWT Authentication
+
+---
+
+## 🧠 Core Backend Modules
+
+<<<<<<< HEAD
+### 📡 Routes (`/src/routes/chat.ts`)
+- Handles AI coach interactions
+- Processes user prompts
+- Connects financial data with AI responses
+
+### 📊 Utils (`/src/utils/asa.ts`)
+- Implements **Average Spending Analysis (ASA)**
+- Tracks spending patterns
+- Generates insights for AI coaching
+
+---
+
+## 🚀 Getting Started
+
+### 🔧 Prerequisites
+
+- Node.js (v16+)
 - npm or yarn
+- Expo Go / Emulator
+- Neon PostgreSQL database
+- Groq API key
 
-### Installation
+=======
+- Node.js (v16+)
+- npm or yarn
+- Expo Go / Emulator
+- Neon PostgreSQL database
+- Groq API key
+
+>>>>>>> temp-fix
+### 🖥️ Backend Setup
 
 ```bash
+cd backend
 npm install
 ```
 
-### Development
+Create `.env`:
+```
+DATABASE_URL=your_neon_database_url
+GROQ_API_KEY=your_groq_api_key
+JWT_SECRET=your_super_secret_key
+```
 
+Run:
 ```bash
+npx drizzle-kit push
 npm run dev
 ```
 
-### Build
+Backend runs at `http://localhost:3000`
+
+### 📱 Frontend Setup
 
 ```bash
-npm run build
+cd frontend
+npm install
 ```
 
-## Project Structure
-
-```
-frontend/
-├── src/
-├── public/
-├── package.json
-└── README.md
+Update API base URL in `frontend/services/api.ts`:
+```javascript
+export const BASE_URL = "http://YOUR_LOCAL_IP:3000/api";
 ```
 
-## License
+Start app:
+```bash
+npx expo start
+```
 
-[Add your license here]
+---
+
+## 📂 Project Structure
+
+```
+Spendly/
+├── frontend/
+│   ├── app/
+│   ├── components/
+│   ├── services/
+│   └── constants/
+└── backend/
+    ├── src/
+    │   ├── controllers/
+    │   ├── routes/
+    │   ├── utils/
+    │   └── middleware/
+    ├── db/
+    └── package.json
+```
+
+---
+
+## 🔥 Features
+
+- 📊 Smart Expense Tracking
+- 🎯 Budget Limit Warnings
+- 🤖 AI Financial Coach (Groq-powered)
+- 📈 Spending Pattern Analysis (ASA Engine)
+- 📄 PDF Reports & Sharing
+- ⚡ Lightning-fast UI with smooth animations
+
+---
+
+## 🌐 Deployment
+
+Deploy the backend using:
+- Render
+- Railway
+- Vercel (Serverless API)
+
+Ensure you:
+- Set environment variables
+- Use production database URL
+- Update frontend BASE_URL
+
+---
+
+## 🛠️ Future Improvements
+
+- Bank API integrations
+- Subscription detection
+- AI-based saving goals
+- Multi-device sync
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Feel free to open issues or submit pull requests.
+

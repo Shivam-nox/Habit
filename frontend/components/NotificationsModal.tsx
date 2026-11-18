@@ -2,8 +2,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView, Platform } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { MotiView } from 'moti';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../utils/haptics';
 
 const C = {
   red: '#DC2626',
@@ -32,7 +31,7 @@ export default function NotificationsModal({ visible, onClose, notifications }: 
           {/* Header */}
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Notifications</Text>
-            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); onClose(); }} style={styles.closeBtn}>
+            <TouchableOpacity onPress={() => { haptics.selection(); onClose(); }} style={styles.closeBtn}>
               <Feather name="x" size={20} color={C.subtext} />
             </TouchableOpacity>
           </View>
@@ -41,11 +40,8 @@ export default function NotificationsModal({ visible, onClose, notifications }: 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
             {notifications.length > 0 ? (
               notifications.map((item, index) => (
-                <MotiView
+                <View
                   key={item.id || index}
-                  from={{ opacity: 0, translateY: 10 }}
-                  animate={{ opacity: 1, translateY: 0 }}
-                  transition={{ type: 'timing', duration: 250, delay: index * 40 }}
                   style={styles.recordCard}
                 >
                   <View style={[styles.iconBox, !item.isRead && { backgroundColor: '#FEE2E2' }]}>
@@ -60,7 +56,7 @@ export default function NotificationsModal({ visible, onClose, notifications }: 
                       {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'Today'}
                     </Text>
                   </View>
-                </MotiView>
+                </View>
               ))
             ) : (
               <View style={styles.emptyState}>

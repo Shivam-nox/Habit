@@ -6,9 +6,8 @@ import {
   Dimensions, ActivityIndicator, RefreshControl, Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MotiView } from 'moti';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import { haptics } from '../../utils/haptics';
 import { useApi } from '../../services/api';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -270,7 +269,7 @@ export default function ChartsScreen() {
         {TABS.map(t => (
           <TouchableOpacity
             key={t} style={[styles.tabItem, tab === t && styles.tabItemActive]}
-            onPress={() => { Haptics.selectionAsync(); setTab(t); }} activeOpacity={0.7}
+            onPress={() => { haptics.selection(); setTab(t); }} activeOpacity={0.7}
           >
             <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>{t}</Text>
           </TouchableOpacity>
